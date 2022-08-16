@@ -175,6 +175,7 @@ void ioMultiplexing(int listener, char* buffer) {
 
 int main(int argc, char *argv[]) {
 
+    // variabili di utilita'
     int listener = NULL;
     struct sockaddr_in server_addr;
     int ret;
