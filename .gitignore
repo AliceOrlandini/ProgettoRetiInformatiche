@@ -4,3 +4,4 @@ device.o
 server.o
 makefile
 exec2022.sh
+.vscode
