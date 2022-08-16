@@ -92,34 +92,6 @@ void ioMultiplexing(int listener, char* buffer) {
     }
 }
 
-/*void initServer(int listener, struct sockaddr_in *server_addr) {
-
-    int ret;
-    int addrlen = sizeof(struct sockaddr_in);
-    listener = socket(AF_INET, SOCK_STREAM, 0);
-    if(listener < 0) {
-        perror("Error");
-        exit(0);
-    }
-    
-    memset(server_addr, 0, addrlen);
-    server_addr->sin_family = AF_INET;
-    server_addr->sin_port = htons(4242);
-    inet_pton(AF_INET, LOCALHOST, (void*)server_addr->sin_addr);
-
-    ret = bind(listener, (struct sockaddr*)&server_addr, addrlen);
-    if(ret < 0) {
-        perror("Error");
-        exit(0);
-    }
-    
-    ret = listen(listener, BACKLOG);
-    if(ret < 0) {
-        perror("Error");
-        exit(0);
-    }
-}*/
-
 int main(int argc, char *argv[]) {
 
     // variabili di utilita'

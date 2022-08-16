@@ -8,11 +8,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#define DEVICE_COMMAND_SIZE 20
-#define STANDARD_INPUT 0
-#define LOCALHOST "127.0.0.1"
-#define SERVER_PORT 4242
-#define BUFFER_SIZE 1024
+#include "./client/const.h"
 
 void ioMultiplexing(int sd, char* buffer, struct sockaddr_in* server_addr) {
     
@@ -52,8 +48,6 @@ void ioMultiplexing(int sd, char* buffer, struct sockaddr_in* server_addr) {
                         break;
                     }
                     printf("Richiesta inviata al server\n");
-                    
-
 
                 } else if(i == STANDARD_INPUT){
                     // prelievo il comando dallo standard input e lo salvo nel buffer
