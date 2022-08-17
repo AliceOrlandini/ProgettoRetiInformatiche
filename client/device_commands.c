@@ -37,43 +37,51 @@ void out() {
     
 }
 
-int executeDeviceCommand(char* buffer) {
+int executeDeviceCommand(char* buffer, struct User* user) {
 
     char* command = NULL;
-    int srv_port = 4242;
-    char* username = NULL;
-    char* password = NULL;
     char* file_name = NULL;
     
-    // prendo il comando inserito dall'utente
+    // prendo il comando inserito 
     command = strtok(buffer, " ");
 
-    // a seconda del comando inserito prendo i parametri 
+    // controllo anche che per i comandi in e signin l'utente sia disconnesso
+    // per gli altri comandi l'utente deve essere connesso.
+    // Poi a seconda del comando inserito prendo i parametri 
     // e chiamo la funzione corrispondente
-    if(!strncmp(command, "in", 2)) {
-        srv_port = atoi(strtok(NULL, " "));
-        username = strtok(NULL, " ");
-        password = strtok(NULL, " ");
-        in(srv_port, username, password);
-    } else if(!strncmp(command, "signup", 6)) {
-        username = strtok(NULL, " ");
-        password = strtok(NULL, " ");
-        signup(username, password);
-    } else if(!strncmp(command, "hanging", 7)) {
-        hanging();
-    } else if(!strncmp(command, "show", 4)) {
-        username = strtok(NULL, " ");
-        show(username);
-    } else if(!strncmp(command, "chat", 4)) {
-        username = strtok(NULL, " ");
-        chat(username);
-    } else if(!strncmp(command, "share", 5)) {
-        file_name = strtok(NULL, " ");
-        share(file_name);
-    } else if(!strncmp(command, "out", 3)) {
-        out();
-    } else { // in caso di comando non valido restituisco -1
-        return -1;
+    if(user->user_state == DISCONNECT) {
+        if(!strncmp(command, "in", 2)) {
+            user->srv_port = atoi(strtok(NULL, " "));
+            user->my_username = strtok(NULL, " ");
+            user->my_password = strtok(NULL, " ");
+            in(user->srv_port, user->my_username, user->my_password);
+            user->user_state = LOGGED;
+        } else if(!strncmp(command, "signup", 6)) {
+            user->my_username = strtok(NULL, " ");
+            user->my_password = strtok(NULL, " ");
+            signup(user->my_username, user->my_password);
+            user->user_state = LOGGED;
+        } else { // in caso di comando non valido restituisco -1
+            return -1;
+        }
+    } else if(user->user_state == LOGGED) {
+        if(!strncmp(command, "hanging", 7)) {
+            hanging();
+        } else if(!strncmp(command, "show", 4)) {
+            user->dst_username = strtok(NULL, " ");
+            show(user->dst_username);
+        } else if(!strncmp(command, "chat", 4)) {
+            user->dst_username = strtok(NULL, " ");
+            chat(user->dst_username);
+        } else if(!strncmp(command, "share", 5)) {
+            file_name = strtok(NULL, " ");
+            share(file_name);
+        } else if(!strncmp(command, "out", 3)) {
+            out();
+            user->user_state = DISCONNECT;
+        } else { // in caso di comando non valido restituisco -2
+            return -2;
+        }
     }
 
     return 0;

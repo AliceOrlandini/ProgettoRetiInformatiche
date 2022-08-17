@@ -11,6 +11,8 @@
 #include "./client/device_consts.h"
 #include "./client/device_commands.h"
 
+struct User user;
+
 void ioMultiplexing(int sd, struct sockaddr_in* server_addr) {
     
     // int addrlen = sizeof(struct sockaddr_in);
@@ -50,8 +52,9 @@ void ioMultiplexing(int sd, struct sockaddr_in* server_addr) {
                     read(STANDARD_INPUT, (void*)&commands_buffer, DEVICE_COMMAND_SIZE);
                     
                     // eseguo l'azione prevista dal comando
-                    ret = executeDeviceCommand((char*)&commands_buffer);
-                    if(ret < 0) { printf("Comando non valido\n"); }
+                    ret = executeDeviceCommand((char*)&commands_buffer, &user);
+                    if(ret == -1) { printf("Comando non valido, i comandi accettati sono in e signup\n"); }
+                    else if(ret == -2) { printf("Comando non valido, i comandi accettati sono hanging, show, chat, share e out\n"); }
                     // pulisco il buffer dei comandi
                     memset(&commands_buffer, '\0', BUFFER_SIZE);
                 } /*else {
@@ -80,13 +83,17 @@ void ioMultiplexing(int sd, struct sockaddr_in* server_addr) {
         }
     }
 }
+
 int main(int argc, char *argv[]) {
 
-    // in_port_t device_port = atoi(argv[1]);
+    in_port_t device_port = atoi(argv[1]);
     int sd;
     struct sockaddr_in server_addr;
     int addrlen = sizeof(struct sockaddr_in);
     int ret;
+
+    user.user_state = DISCONNECT;
+    user.my_port = device_port;
 
     sd = socket(AF_INET, SOCK_STREAM, 0);
     if(sd < 0) { perror("Error0"); exit(0); }

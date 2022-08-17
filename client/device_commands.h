@@ -1,3 +1,5 @@
+#include "user.h"
+
 void printCommands();
 void signup(char*, char*);
 void in(int, char*, char*);
@@ -6,4 +8,4 @@ void show(char*);
 void chat(char*);
 void share(char*);
 void out();
-int executeDeviceCommand(char*);
+int executeDeviceCommand(char*, struct User*);
