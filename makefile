@@ -2,21 +2,24 @@
 all: dev serv
 
 # make rule per il device 
-dev: device.o
-	gcc -Wall -o dev device.o
+dev: device.o ./client/device_commands.o
+	gcc -Wall -o dev device.o ./client/device_commands.o
 
 device.o: device.c
 	gcc -c -Wall -o device.o device.c
 
+device_commands.o: device_commands.c 
+	gcc -c -Wall -o ./client/device_commands.o ./client/device_commands.c
+
 # make rule per il server 
-serv: server.o ./server/commands.o
-	gcc -Wall -o serv server.o ./server/commands.o
+serv: server.o ./server/server_commands.o
+	gcc -Wall -o serv server.o ./server/server_commands.o
 
 server.o: server.c
 	gcc -c -Wall -o server.o server.c 
 
-commands.o: commands.c 
-	gcc -c -Wall -o ./server/commands.o ./server/commands.c
+server_commands.o: server_commands.c 
+	gcc -c -Wall -o ./server/server_commands.o ./server/server_commands.c
 
 # pulizia dei file della compilazione (eseguito con make clean)
 clean:

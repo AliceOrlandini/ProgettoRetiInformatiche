@@ -8,8 +8,8 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "./server/const.h"
-#include "./server/commands.h"
+#include "./server/server_consts.h"
+#include "./server/server_commands.h"
 
 /*#include <sys/select.h>
 #include <stdlib.h>
@@ -46,7 +46,6 @@ void ioMultiplexing(int listener) {
                 if(i == listener) {
                     new_sd = accept(listener, (struct sockaddr*)&client_addr, (socklen_t*)&addrlen);
                     printf("Stabilita una connessione\n");
-                    
                     FD_SET(new_sd, &master);
                     if(new_sd > fdmax) { fdmax = new_sd; }
                 } else if(i == STANDARD_INPUT){
@@ -60,11 +59,11 @@ void ioMultiplexing(int listener) {
                     if(pid == 0) { // sono nel processo figlio
                         close(listener);
                         
-                        memset(&buffer, '\0', sizeof(buffer));
+                        /* memset(&buffer, '\0', sizeof(buffer));
                         len = 1;
                         ret = recv(i, (void*)&buffer, len, 0);
-                        if(ret < 0) { /* errore */}
-                        printf("Richiesta ricevuta da un client %s\n", buffer);
+                        if(ret < 0) { }
+                        printf("Richiesta ricevuta da un client %s\n", buffer); */
                         
                         // close(new_sd);
                         exit(0);
