@@ -1,9 +1,9 @@
 void printCommands();
-void signup();
-void in();
+void signup(char*, char*);
+void in(int, char*, char*);
 void hanging();
-void show();
-void chat();
-void share();
+void show(char*);
+void chat(char*);
+void share(char*);
 void out();
-void executeDeviceCommand(char*);
+int executeDeviceCommand(char*);

@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include "./client/device_consts.h"
+#include "./client/device_commands.h"
 
 void ioMultiplexing(int sd, struct sockaddr_in* server_addr) {
     
@@ -20,7 +21,11 @@ void ioMultiplexing(int sd, struct sockaddr_in* server_addr) {
     int fdmax;
     int i;
     // int len;
-    char buffer[BUFFER_SIZE];
+    char message_buffer[BUFFER_SIZE];
+    char commands_buffer[BUFFER_SIZE];
+
+    memset(&message_buffer, '\0', BUFFER_SIZE);
+    memset(&commands_buffer, '\0', BUFFER_SIZE);
 
     FD_ZERO(&master);
     FD_ZERO(&read_fds);
@@ -42,9 +47,13 @@ void ioMultiplexing(int sd, struct sockaddr_in* server_addr) {
 
                 } else*/ if(i == STANDARD_INPUT){
                     // prelievo il comando dallo standard input e lo salvo nel buffer
-                    read(STANDARD_INPUT, (void*)&buffer, DEVICE_COMMAND_SIZE);
+                    read(STANDARD_INPUT, (void*)&commands_buffer, DEVICE_COMMAND_SIZE);
+                    
                     // eseguo l'azione prevista dal comando
-                    executeDeviceCommand((char*)&buffer);
+                    ret = executeDeviceCommand((char*)&commands_buffer);
+                    if(ret < 0) { printf("Comando non valido\n"); }
+                    // pulisco il buffer dei comandi
+                    memset(&commands_buffer, '\0', BUFFER_SIZE);
                 } /*else {
                     pid = fork();
                     if(pid < 0) { }
