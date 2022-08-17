@@ -65,6 +65,9 @@ int main(int argc, char *argv[]) {
     char buffer[BUFFER_SIZE];
     int sd;
     struct sockaddr_in server_addr;
+    int ret; 
+    int addrlen = sizeof(struct sockaddr_in);
+    int len;
 
     sd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -73,7 +76,28 @@ int main(int argc, char *argv[]) {
     server_addr.sin_port = htons(SERVER_PORT);
     inet_pton(AF_INET, LOCALHOST, &server_addr.sin_addr);
 
-    ioMultiplexing(sd, (char*)&buffer, &server_addr);
+    // ioMultiplexing(sd, (char*)&buffer, &server_addr);
+
+    ret = connect(sd, (struct sockaddr*)&server_addr, (socklen_t)addrlen);
+    if(ret < 0) {
+        perror("Error1");
+        exit(0);
+    }
+    printf("Stabilita una connessione\n");
+
+    sleep(5);
+
+    len = 1;
+    buffer[0] = '1';
+    ret = send(sd, (void*)buffer, len, 0);
+    if(ret == -1) {
+        perror("Error2");
+    }
+    printf("Richiesta inviata al server\n");
+
+    sleep(5);
+
+    close(sd);
     
     return  0;
 }

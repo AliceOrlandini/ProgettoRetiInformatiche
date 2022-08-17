@@ -17,7 +17,7 @@
 #include <stdbool.h>*/
 
 /* gestione dei descrittori pronti tramite l'io multiplexing */
-void ioMultiplexing(int listener, char* buffer) {
+void ioMultiplexing(int listener) {
     
     int new_sd;
     struct sockaddr_in client_addr;
@@ -28,6 +28,8 @@ void ioMultiplexing(int listener, char* buffer) {
     int fdmax;
     int i;
     int ret;
+    int len;
+    char buffer[BUFFER_SIZE];
 
     FD_ZERO(&master);
     FD_ZERO(&read_fds);
@@ -42,50 +44,36 @@ void ioMultiplexing(int listener, char* buffer) {
         for(i = 0; i <= fdmax; i++) {
             if(FD_ISSET(i, &read_fds)) {
                 if(i == listener) {
-                    printf("Accetto nuove richieste di connessione\n");
                     new_sd = accept(listener, (struct sockaddr*)&client_addr, (socklen_t*)&addrlen);
-                    if(new_sd < 0) {
-                        perror("Error4");
-                        // exit(0); // togliere
-                    } else {
-                        printf("Stabilita una connessione\n");
-                        
-                        FD_SET(new_sd, &master);
-                        fdmax = (new_sd > fdmax)? new_sd:fdmax;
-
-                        // uso la fork per una gestione concorrente delle richieste
-                        pid = fork(); 
-                        if(pid < 0) {
-                            perror("Error5");
-                            exit(0);
-                        } else if(pid == 0) {
-                            // siamo nel figlio quindi chiudo il socket di ascolto
-                            close(listener);
-                            // elaboro la richiesta 
-                            memset(&buffer, '\0', sizeof(buffer));
-                            int len = 1;
-                            ret = recv(new_sd, (void*)&buffer, len, 0);
-                            if(ret < len) {
-                                perror("Error6");
-                                break;
-                            }
-                            printf("Richiesta ricevuta da un client %s\n", buffer);
-                        
-                            
-                            // chiudo il socket di comunicazione e termino il figlio
-                            // close(new_sd);
-                            // exit(0);
-                        } else {
-                            // siamo nel padre quindi chiudo il socket di comunicazione
-                            close(new_sd);
-                        }
-                        
-                    }
+                    printf("Stabilita una connessione\n");
+                    
+                    FD_SET(new_sd, &master);
+                    if(new_sd > fdmax) { fdmax = new_sd; }
                 } else if(i == STANDARD_INPUT){
                     // prelievo il comando dallo standard input e lo salvo nel buffer
                     read(STANDARD_INPUT, (void*)&buffer, SERVER_COMMAND_SIZE);
                     // eseguo l'azione prevista dal comando
                     executeServerCommand((char*)&buffer);
+                } else { // Il socket connesso è pronto
+                    pid = fork();
+                    if(pid < 0) { /* errore */ }
+                    if(pid == 0) { // sono nel processo figlio
+                        close(listener);
+                        
+                        memset(&buffer, '\0', sizeof(buffer));
+                        len = 1;
+                        ret = recv(i, (void*)&buffer, len, 0);
+                        if(ret < 0) { /* errore */}
+                        printf("Richiesta ricevuta da un client %s\n", buffer);
+                        
+                        // close(new_sd);
+                        exit(0);
+                    } else { // sono nel processo padre
+                        // chiudo il socket connesso
+                        close(i);
+                        // tolgo il descrittore del socket connesso dal set dei monitorati
+                        FD_CLR(i, &master);
+                    }  
                 }
             }
         }
@@ -98,7 +86,6 @@ int main(int argc, char *argv[]) {
     int listener;
     struct sockaddr_in server_addr;
     int ret;
-    char buffer[BUFFER_SIZE];
 
     printf("***** SERVER STARTED *****\n");
     printCommands();
@@ -126,7 +113,7 @@ int main(int argc, char *argv[]) {
         exit(0);
     }
 
-    ioMultiplexing(listener, (char*)&buffer);
+    ioMultiplexing(listener);
     
     return  0;
 }
