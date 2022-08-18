@@ -10,19 +10,19 @@
 
 #include "./client/device_consts.h"
 #include "./client/device_commands.h"
+#include "./client/network.h"
 
 struct User user;
 
-void ioMultiplexing(int sd, struct sockaddr_in* server_addr) {
+void ioMultiplexing(int* sd, struct sockaddr_in* server_addr) {
     
-    // int addrlen = sizeof(struct sockaddr_in);
     // pid_t pid;
     int ret;
     fd_set master;
     fd_set read_fds;
     int fdmax;
     int i;
-    // int len;
+
     char message_buffer[BUFFER_SIZE];
     char commands_buffer[BUFFER_SIZE];
 
@@ -33,8 +33,8 @@ void ioMultiplexing(int sd, struct sockaddr_in* server_addr) {
     FD_ZERO(&read_fds);
 
     FD_SET(STANDARD_INPUT, &master);
-    FD_SET(sd, &master);
-    fdmax = sd;
+    FD_SET(*sd, &master);
+    fdmax = *sd;
 
     for(;;) {
         read_fds = master;
@@ -43,7 +43,7 @@ void ioMultiplexing(int sd, struct sockaddr_in* server_addr) {
         for(i = 0; i <= fdmax; i++) {
             if(FD_ISSET(i, &read_fds)) {
                 /*if(i == sd) {
-                     ret = connect(sd, (struct sockaddr*)server_addr, (socklen_t)addrlen);
+                    ret = connect(sd, (struct sockaddr*)server_addr, (socklen_t)addrlen);
                     if(ret < 0) { perror("Error1"); exit(0); }
                     printf("Stabilita la connessione!\n");  
 
@@ -52,7 +52,7 @@ void ioMultiplexing(int sd, struct sockaddr_in* server_addr) {
                     read(STANDARD_INPUT, (void*)&commands_buffer, DEVICE_COMMAND_SIZE);
                     
                     // eseguo l'azione prevista dal comando
-                    ret = executeDeviceCommand((char*)&commands_buffer, &user);
+                    ret = executeDeviceCommand((char*)&commands_buffer, &user, sd, server_addr);
                     if(ret == -1) { printf("Comando non valido, i comandi accettati sono in e signup\n"); }
                     else if(ret == -2) { printf("Comando non valido, i comandi accettati sono hanging, show, chat, share e out\n"); }
                     // pulisco il buffer dei comandi
@@ -89,25 +89,19 @@ int main(int argc, char *argv[]) {
     in_port_t device_port = atoi(argv[1]);
     int sd;
     struct sockaddr_in server_addr;
-    int addrlen = sizeof(struct sockaddr_in);
-    int ret;
 
+    // imposto i valori dell'utente
     user.user_state = DISCONNECT;
     user.my_port = device_port;
 
-    sd = socket(AF_INET, SOCK_STREAM, 0);
-    if(sd < 0) { perror("Error0"); exit(0); }
+    // stampo i comandi disponibili
+    printCommands(user);
+    
+    // devo fare la connessione al server prima dell'iomultiplexing
+    // altrimenti a fdmax viene assegnato un valore non significativo
+    server_connect(&sd, &server_addr); 
 
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(SERVER_PORT);
-    inet_pton(AF_INET, LOCALHOST, &server_addr.sin_addr);
-
-    ret = connect(sd, (struct sockaddr*)&server_addr, (socklen_t)addrlen);
-    if(ret < 0) { perror("Error1"); exit(0); }
-    printf("Stabilita la connessione!\n"); 
-
-    ioMultiplexing(sd, &server_addr);
+    ioMultiplexing(&sd, &server_addr);
     
     return  0;
 }

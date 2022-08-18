@@ -1,6 +1,4 @@
 dev
 serv
-device.o
-server.o
-command.o
+*.o
 .vscode

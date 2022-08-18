@@ -4,17 +4,31 @@
 
 #include "device_commands.h"
 #include "device_consts.h"
+#include "network.h"
 
-void printCommands() {
-    
+void printCommands(struct User user) {
+    printf("I comandi disponibili sono:\n");
+    if(user.user_state == DISCONNECT) {
+        printf("1) in --> per accedere al servizio \n2) signup --> per creare un account\n");
+    } else if(user.user_state == LOGGED) {
+        printf("1) hanging --> per ricevere i messaggi mentre si era offline\n2) show --> per ricevere i messaggi pendenti dall'utente specificato\n3) chat --> per chattare con un altro utente\n4) share --> per condividere un file\n5) out --> per disconnettersi\n");
+    }
 }
 
-void signup(char* username, char* password) {
-    
+/* 
+    Permette a un utente di creare un account sul server, 
+    caratterizzato da username e password 
+*/
+void signup(char* username, char* password, int* sd, struct sockaddr_in* server_addr) {
+    // 1) devo dire al server che un nuovo utente desidera registrarsi
+    // send_TCP(&sd, &server_addr, "SIGNUP");
+    //  1.a) invio al server il codice signup
+    //  1.b) invio al server l'username e la password 
+    // 1) ricevo la risposta dal server (successo o insuccesso)
 }
 
 void in(int srv_name, char* username, char* password) {
-    
+    // 1) 
 }
 
 void hanging() {
@@ -37,7 +51,7 @@ void out() {
     
 }
 
-int executeDeviceCommand(char* buffer, struct User* user) {
+int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockaddr_in* server_addr) {
 
     char* command = NULL;
     char* file_name = NULL;
@@ -56,10 +70,10 @@ int executeDeviceCommand(char* buffer, struct User* user) {
             user->my_password = strtok(NULL, " ");
             in(user->srv_port, user->my_username, user->my_password);
             user->user_state = LOGGED;
-        } else if(!strncmp(command, "signup", 6)) {
+        } else if(!strncmp(command, "signup", 6)) { 
             user->my_username = strtok(NULL, " ");
             user->my_password = strtok(NULL, " ");
-            signup(user->my_username, user->my_password);
+            signup(user->my_username, user->my_password, sd, server_addr);
             user->user_state = LOGGED;
         } else { // in caso di comando non valido restituisco -1
             return -1;
