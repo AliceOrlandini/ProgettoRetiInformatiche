@@ -1,8 +1,8 @@
 #include "user.h"
 
 void printCommands(struct User);
-void signup(char*, char*, int*);
-void in(int, char*, char*, int*);
+void signup(char*, char*, char*, int*);
+void in(char*, int, char*, char*, int*);
 void hanging();
 void show(char*);
 void chat(char*);

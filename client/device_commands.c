@@ -23,24 +23,29 @@ void printCommands(struct User user) {
     Permette a un utente di creare un account sul server, 
     caratterizzato da username e password.
 */
-void signup(char* username, char* password, int* sd) {
+void signup(char* command, char* username, char* password, int* sd) {
 
     int len;
+    int ret;
     char* message;
 
     // unisco le tre stringhe per inviare un solo messaggio
-    len = strlen("SIGNUP") + strlen(username) + strlen(password) + 2; // il +2 serve per gli spazi
+    len = strlen(command) + strlen(username) + strlen(password) + 2; // il +2 serve per gli spazi
     message = malloc(len);
-    snprintf(message, len, "%s %s %s", "SIGNUP", username, password);
-    printf("%s\n", message);
+    snprintf(message, len, "%s %s %s", command, username, password);
+    
     // invio al server il messaggio
-    send_TCP(sd, message);
+    ret = send_TCP(sd, message);
+    if(ret < 0) { printf("Impossibile eseguire la registrazione\n"); }
+    
     // libero la memoria utilizzata per il messaggio
     free(message);
+    
+    printf("Registrazione avvenuta con successo!\n");
 }
 
-void in(int srv_name, char* username, char* password, int* sd) {
-    send_TCP(sd, "IN");
+void in(char* command, int srv_port, char* username, char* password, int* sd) {
+    
 }
 
 void hanging() {
@@ -84,12 +89,12 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd) {
             user->srv_port = atoi(strtok(NULL, " "));
             user->my_username = strtok(NULL, " ");
             user->my_password = strtok(NULL, " ");
-            in(user->srv_port, user->my_username, user->my_password, sd);
+            in(command, user->srv_port, user->my_username, user->my_password, sd);
             user->user_state = LOGGED;
         } else if(!strncmp(command, "signup", 6)) { 
             user->my_username = strtok(NULL, " ");
             user->my_password = strtok(NULL, " ");
-            signup(user->my_username, user->my_password, sd);
+            signup(command, user->my_username, user->my_password, sd);
             user->user_state = LOGGED;
         } else { // in caso di comando non valido restituisco -1
             return -1;

@@ -20,23 +20,31 @@
     gestione della richiesta del device, a seconda
     del comando ricevuto si invoca la funzione corrispondente
 */
-void serveDeviceRequest(char* richiesta) {
+int serveDeviceRequest(char* request) {
 
-    if(!strncmp(richiesta, "IN", 2)) {
+    char* command = NULL;
     
-    } else if(!strncmp(richiesta, "SIGNUP", 6)) {
+    // prendo il comando inserito 
+    command = strtok(request, " ");
 
-    } else if(!strncmp(richiesta, "HANGING", 6)) {
+    if(!strncmp(command, "in", 2)) {
+    
+    } else if(!strncmp(command, "signup", 6)) {
+        printf("SIGNUP\n");
+    } else if(!strncmp(command, "hanging", 7)) {
+        printf("IN\n");
+    } else if(!strncmp(command, "show", 4)) {
         
-    } else if(!strncmp(richiesta, "SHOW", 6)) {
+    } else if(!strncmp(command, "chat", 4)) {
         
-    } else if(!strncmp(richiesta, "CHAT", 6)) {
+    } else if(!strncmp(command, "share", 5)) {
         
-    } else if(!strncmp(richiesta, "SHARE", 6)) {
+    } else if(!strncmp(command, "out", 3)) {
         
-    } else if(!strncmp(richiesta, "OUT", 6)) {
-        
+    } else {
+        return -1;
     }
+    return 0;
 }
 
 /* 
@@ -104,7 +112,8 @@ void ioMultiplexing(int listener) {
                         printf("Richiesta ricevuta da un client %s\n", buffer);
 
                         // a seconda del tipo di richiesta eseguo la funzione corrispondente
-                        serveDeviceRequest(buffer);
+                        ret = serveDeviceRequest(buffer);
+                        if(ret < 0) { printf("Richiesta non valida\n"); }
                         
                         // close(new_sd);
                         exit(0);
