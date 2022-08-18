@@ -14,7 +14,11 @@
 
 struct User user;
 
-void ioMultiplexing(int* sd, struct sockaddr_in* server_addr) {
+/* 
+    gestione dei descrittori pronti 
+    tramite l'io multiplexing 
+*/
+void ioMultiplexing(int* sd) {
     
     // pid_t pid;
     int ret;
@@ -52,7 +56,7 @@ void ioMultiplexing(int* sd, struct sockaddr_in* server_addr) {
                     read(STANDARD_INPUT, (void*)&commands_buffer, DEVICE_COMMAND_SIZE);
                     
                     // eseguo l'azione prevista dal comando
-                    ret = executeDeviceCommand((char*)&commands_buffer, &user, sd, server_addr);
+                    ret = executeDeviceCommand((char*)&commands_buffer, &user, sd);
                     if(ret == -1) { printf("Comando non valido, i comandi accettati sono in e signup\n"); }
                     else if(ret == -2) { printf("Comando non valido, i comandi accettati sono hanging, show, chat, share e out\n"); }
                     // pulisco il buffer dei comandi
@@ -99,9 +103,9 @@ int main(int argc, char *argv[]) {
     
     // devo fare la connessione al server prima dell'iomultiplexing
     // altrimenti a fdmax viene assegnato un valore non significativo
-    server_connect(&sd, &server_addr); 
+    connect_to_server(&sd, &server_addr); 
 
-    ioMultiplexing(&sd, &server_addr);
+    ioMultiplexing(&sd);
     
     return  0;
 }

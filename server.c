@@ -16,7 +16,33 @@
 #include <time.h>
 #include <stdbool.h>*/
 
-/* gestione dei descrittori pronti tramite l'io multiplexing */
+/*
+    gestione della richiesta del device, a seconda
+    del comando ricevuto si invoca la funzione corrispondente
+*/
+void serveDeviceRequest(char* richiesta) {
+
+    if(!strncmp(richiesta, "IN", 2)) {
+    
+    } else if(!strncmp(richiesta, "SIGNUP", 6)) {
+
+    } else if(!strncmp(richiesta, "HANGING", 6)) {
+        
+    } else if(!strncmp(richiesta, "SHOW", 6)) {
+        
+    } else if(!strncmp(richiesta, "CHAT", 6)) {
+        
+    } else if(!strncmp(richiesta, "SHARE", 6)) {
+        
+    } else if(!strncmp(richiesta, "OUT", 6)) {
+        
+    }
+}
+
+/* 
+    gestione dei descrittori pronti 
+    tramite l'io multiplexing 
+*/
 void ioMultiplexing(int listener) {
     
     int new_sd;
@@ -29,6 +55,7 @@ void ioMultiplexing(int listener) {
     int i;
     int ret;
     int len;
+    uint16_t lmsg;
     char buffer[BUFFER_SIZE];
 
     FD_ZERO(&master);
@@ -45,9 +72,12 @@ void ioMultiplexing(int listener) {
             if(FD_ISSET(i, &read_fds)) {
                 if(i == listener) {
                     new_sd = accept(listener, (struct sockaddr*)&client_addr, (socklen_t*)&addrlen);
-                    printf("Stabilita una connessione\n");
-                    FD_SET(new_sd, &master);
-                    if(new_sd > fdmax) { fdmax = new_sd; }
+                    if(new_sd < 0) { perror("Error0 accept"); }
+                    else {
+                        printf("Stabilita una connessione!\n");
+                        FD_SET(new_sd, &master);
+                        if(new_sd > fdmax) { fdmax = new_sd; }
+                    }
                 } else if(i == STANDARD_INPUT){
                     // prelievo il comando dallo standard input e lo salvo nel buffer
                     read(STANDARD_INPUT, (void*)&buffer, SERVER_COMMAND_SIZE);
@@ -55,15 +85,26 @@ void ioMultiplexing(int listener) {
                     executeServerCommand((char*)&buffer);
                 } else { // Il socket connesso è pronto
                     pid = fork();
-                    if(pid < 0) { /* errore */ }
-                    if(pid == 0) { // sono nel processo figlio
+                    if(pid < 0) { perror("Error1 fork"); }
+                    else if(pid == 0) { // sono nel processo figlio
                         close(listener);
                         
-                        /* memset(&buffer, '\0', sizeof(buffer));
-                        len = 1;
+                        // inizializzo il buffer per ricevere messaggi
+                        memset(&buffer, '\0', sizeof(buffer));
+                        
+                        // ricevo la quantità di dati
+                        ret = recv(i, (void*)&lmsg, sizeof(uint16_t), 0);
+                        if(ret < 0) { perror("Error2 receive_TCP len"); }
+                        // riconverto la dimensione in formato host
+                        len = ntohs(lmsg);
+                        
+                        // ricevo i dati
                         ret = recv(i, (void*)&buffer, len, 0);
-                        if(ret < 0) { }
-                        printf("Richiesta ricevuta da un client %s\n", buffer); */
+                        if(ret < 0) { perror("Error3 receive_TCP data"); }
+                        printf("Richiesta ricevuta da un client %s\n", buffer);
+
+                        // a seconda del tipo di richiesta eseguo la funzione corrispondente
+                        serveDeviceRequest(buffer);
                         
                         // close(new_sd);
                         exit(0);
@@ -81,7 +122,6 @@ void ioMultiplexing(int listener) {
 
 int main(int argc, char *argv[]) {
 
-    // variabili di utilita'
     int listener;
     struct sockaddr_in server_addr;
     int ret;
@@ -90,10 +130,7 @@ int main(int argc, char *argv[]) {
     printCommands();
     
     listener = socket(AF_INET, SOCK_STREAM, 0);
-    if(listener < 0) {
-        perror("Error1");
-        exit(0);
-    }
+    if(listener < 0) { perror("Error0 socket"); exit(0); }
     
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
@@ -101,16 +138,10 @@ int main(int argc, char *argv[]) {
     inet_pton(AF_INET, LOCALHOST, &server_addr.sin_addr);
 
     ret = bind(listener, (struct sockaddr*)&server_addr, sizeof(server_addr));
-    if(ret < 0) {
-        perror("Error2");
-        exit(0);
-    }
+    if(ret < 0) { perror("Error1 bind"); exit(0); }
     
     ret = listen(listener, BACKLOG);
-    if(ret < 0) {
-        perror("Error3");
-        exit(0);
-    }
+    if(ret < 0) { perror("Error2 listen"); exit(0); }
 
     ioMultiplexing(listener);
     

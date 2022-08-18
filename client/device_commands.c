@@ -6,6 +6,10 @@
 #include "device_consts.h"
 #include "network.h"
 
+/*
+    Stampa a video i comandi disponibili a 
+    seconda dello stato dell'utente.
+*/
 void printCommands(struct User user) {
     printf("I comandi disponibili sono:\n");
     if(user.user_state == DISCONNECT) {
@@ -17,18 +21,20 @@ void printCommands(struct User user) {
 
 /* 
     Permette a un utente di creare un account sul server, 
-    caratterizzato da username e password 
+    caratterizzato da username e password.
 */
-void signup(char* username, char* password, int* sd, struct sockaddr_in* server_addr) {
-    // 1) devo dire al server che un nuovo utente desidera registrarsi
-    // send_TCP(&sd, &server_addr, "SIGNUP");
-    //  1.a) invio al server il codice signup
-    //  1.b) invio al server l'username e la password 
+void signup(char* username, char* password, int* sd) {
+
+    // invio al server il codice signup
+    send_TCP(sd, "SIGNUP");
+    // invio al server l'username e la password 
+    send_TCP(sd, username);
+    send_TCP(sd, password);
     // 1) ricevo la risposta dal server (successo o insuccesso)
 }
 
-void in(int srv_name, char* username, char* password) {
-    // 1) 
+void in(int srv_name, char* username, char* password, int* sd) {
+    send_TCP(sd, "IN");
 }
 
 void hanging() {
@@ -51,7 +57,11 @@ void out() {
     
 }
 
-int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockaddr_in* server_addr) {
+/*
+    A seconda del comando digitato dall'utente
+    si esegue la funzione corrispondente.
+*/
+int executeDeviceCommand(char* buffer, struct User* user, int* sd) {
 
     char* command = NULL;
     char* file_name = NULL;
@@ -62,18 +72,18 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
     // controllo anche che per i comandi in e signin l'utente sia disconnesso
     // per gli altri comandi l'utente deve essere connesso.
     // Poi a seconda del comando inserito prendo i parametri 
-    // e chiamo la funzione corrispondente
+    // e chiamo la funzione 
     if(user->user_state == DISCONNECT) {
         if(!strncmp(command, "in", 2)) {
             user->srv_port = atoi(strtok(NULL, " "));
             user->my_username = strtok(NULL, " ");
             user->my_password = strtok(NULL, " ");
-            in(user->srv_port, user->my_username, user->my_password);
+            in(user->srv_port, user->my_username, user->my_password, sd);
             user->user_state = LOGGED;
         } else if(!strncmp(command, "signup", 6)) { 
             user->my_username = strtok(NULL, " ");
             user->my_password = strtok(NULL, " ");
-            signup(user->my_username, user->my_password, sd, server_addr);
+            signup(user->my_username, user->my_password, sd);
             user->user_state = LOGGED;
         } else { // in caso di comando non valido restituisco -1
             return -1;
