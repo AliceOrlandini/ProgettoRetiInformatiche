@@ -25,12 +25,18 @@ void printCommands(struct User user) {
 */
 void signup(char* username, char* password, int* sd) {
 
-    // invio al server il codice signup
-    send_TCP(sd, "SIGNUP");
-    // invio al server l'username e la password 
-    send_TCP(sd, username);
-    send_TCP(sd, password);
-    // 1) ricevo la risposta dal server (successo o insuccesso)
+    int len;
+    char* message;
+
+    // unisco le tre stringhe per inviare un solo messaggio
+    len = strlen("SIGNUP") + strlen(username) + strlen(password) + 2; // il +2 serve per gli spazi
+    message = malloc(len);
+    snprintf(message, len, "%s %s %s", "SIGNUP", username, password);
+    printf("%s\n", message);
+    // invio al server il messaggio
+    send_TCP(sd, message);
+    // libero la memoria utilizzata per il messaggio
+    free(message);
 }
 
 void in(int srv_name, char* username, char* password, int* sd) {

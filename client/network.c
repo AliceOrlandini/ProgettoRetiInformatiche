@@ -35,19 +35,19 @@ void connect_to_server(int* sd, struct sockaddr_in* server_addr) {
 /*
     funzione per l'invio di messaggi TCP al server
 */
-void send_TCP(int* sd, char* messaggio) {
+void send_TCP(int* sd, char* message) {
 
     int len; 
     int ret;
     uint16_t lmsg;
     
-    len = strlen(messaggio);
+    len = strlen(message);
     lmsg = htons(len);
     // invio la dimensione dei dati che invierò
     ret = send(*sd, (void*)&lmsg, sizeof(uint16_t), 0);
     if(ret < 0) { perror("Error0 send_TCP len"); }
     // invio i dati
-    ret = send(*sd, (void*)messaggio, len, 0);
+    ret = send(*sd, (void*)message, len, 0);
     if(ret < 0) { perror("Error1 send_TCP data"); }
     printf("Richiesta inviata al server!\n");
 }
@@ -55,6 +55,6 @@ void send_TCP(int* sd, char* messaggio) {
 /*
     funzione per la ricezione di messaggi TCP da parte del server
 */
-void receive_TCP(int* sd, char* messaggio) {
+void receive_TCP(int* sd, char* message) {
 
 }
