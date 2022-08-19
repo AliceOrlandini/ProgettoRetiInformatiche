@@ -101,6 +101,9 @@ int main(int argc, char *argv[]) {
     // stampo i comandi disponibili
     printCommands(user);
 
+    // pulisco il buffer dei comandi
+    memset(&commands_buffer, '\0', BUFFER_SIZE);
+
     // Finchè l'utente non si connette non faccio partire l'iomultiplexing 
     // altrimenti ad fdmax verrebbe assegnato un valore non significativo
     while(user.user_state == DISCONNECT) {

@@ -62,5 +62,10 @@ void receive_TCP(int* sd, char* message) {
 }
 
 int disconnect_to_server(int* sd) {
+    
+    /* int ret; 
 
+    ret = close(*sd);
+    if(ret < 0) { perror("Error0 disconnect_to_server"); return -1; } */
+    return 0;
 }
