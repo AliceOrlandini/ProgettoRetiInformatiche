@@ -23,14 +23,15 @@ void printCommands(struct User user) {
     Permette a un utente di creare un account sul server, 
     caratterizzato da username e password.
 */
-void signup(char* command, char* username, char* password, int* sd, struct sockaddr_in* server_addr) {
+int signup(char* command, char* username, char* password, int* sd, struct sockaddr_in* server_addr) {
 
     int len;
     int ret;
     char* message; 
 
     // stabilisco la connessione con il server
-    connect_to_server(sd, server_addr);
+    ret = connect_to_server(sd, server_addr, SERVER_PORT);
+    if(ret < 0) { return -1; }
     
     // unisco le tre stringhe per inviare un solo messaggio
     len = strlen(command) + strlen(username) + strlen(password) + 2; // il +2 serve per gli spazi
@@ -39,40 +40,85 @@ void signup(char* command, char* username, char* password, int* sd, struct socka
     
     // invio al server il messaggio
     ret = send_TCP(sd, message);
-    if(ret < 0) { printf("Impossibile eseguire la registrazione\n"); }
+    if(ret < 0) { printf("Impossibile eseguire la registrazione\n"); free(message); return -1; }
     
     // libero la memoria utilizzata per il messaggio
     free(message);
     
     printf("Registrazione avvenuta con successo!\n");
+    return 0;
 }
 
-void in(char* command, int srv_port, char* username, char* password, int* sd, struct sockaddr_in* server_addr) {
+/*
+    Permette al device di richiedere al 
+    server la connessione al servizio.
+*/
+int in(char* command, int srv_port, char* username, char* password, int* sd, struct sockaddr_in* server_addr) {
     
+    int len;
+    int ret;
+    char* message; 
+
     // stabilisco la connessione con il server
-    connect_to_server(sd, server_addr);
+    ret = connect_to_server(sd, server_addr, srv_port);
+    if(ret < 0) { return -1; }
+
+    // unisco le tre stringhe per inviare un solo messaggio
+    len = strlen(command) + strlen(username) + strlen(password) + 2; // il +2 serve per gli spazi
+    message = malloc(len);
+    snprintf(message, len, "%s %s %s", command, username, password);
+    
+    // invio al server il messaggio
+    ret = send_TCP(sd, message);
+    if(ret < 0) { printf("Impossibile eseguire il login\n"); free(message); return -2; }
+    
+    // libero la memoria utilizzata per il messaggio
+    free(message);
 
     printf("Login avvenuto con successo!\n");
+    return 0;
 }
 
+/*
+    Permette all'utente di ricevere la lista degli utenti 
+    chi gli hanno inviato messaggi mentre era offline.
+*/
 void hanging() {
     
 }
 
+/*
+    Consente all'utente di ricevere i messaggi 
+    pendenti dall'utente username.
+*/
 void show(char* username) {
     
 }
 
+/*
+    Avvia una chat con l'utente username.
+*/
 void chat(char* username) {
     
 }
 
+/*
+    Invia il file file_name al device su cui è connesso
+    l'utente o gli utenti con cui si sta chattando. 
+*/
 void share(char* file_name) {
     
 }
 
-void out() {
+/*
+    Permette al device di disconnettersi dal server.
+*/
+void out(int* sd) {
     
+    int ret;
+    // invio la richiesta di disconnessione
+    ret = disconnect_to_server(sd);
+    if(ret == -1) { printf("Impossibile disconnettersi\n"); }
 }
 
 /*
@@ -81,6 +127,7 @@ void out() {
 */
 int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockaddr_in* server_addr) {
 
+    int ret;
     char* command = NULL;
     char* file_name = NULL;
     
@@ -97,14 +144,16 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
             user->my_username = strtok(NULL, " ");
             user->my_password = strtok(NULL, " ");
              
-            in(command, user->srv_port, user->my_username, user->my_password, sd, server_addr);
-            user->user_state = LOGGED;
+            ret = in(command, user->srv_port, user->my_username, user->my_password, sd, server_addr);
+            if(ret == 0) { user->user_state = LOGGED; }
+
         } else if(!strncmp(command, "signup", 6)) { 
             user->my_username = strtok(NULL, " ");
             user->my_password = strtok(NULL, " ");
 
-            signup(command, user->my_username, user->my_password, sd, server_addr);
-            user->user_state = LOGGED;
+            ret = signup(command, user->my_username, user->my_password, sd, server_addr);
+            if(ret == 0) { user->user_state = LOGGED; }
+        
         } else { // in caso di comando non valido restituisco -1
             return -1;
         }
@@ -121,7 +170,7 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
             file_name = strtok(NULL, " ");
             share(file_name);
         } else if(!strncmp(command, "out", 3)) {
-            out();
+            out(sd);
             user->user_state = DISCONNECT;
         } else { // in caso di comando non valido restituisco -2
             return -2;

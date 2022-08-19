@@ -41,7 +41,7 @@ void ioMultiplexing(int* sd, char* commands_buffer) {
     for(;;) {
         read_fds = master;
         ret = select(fdmax + 1, &read_fds, NULL, NULL, NULL);
-        if(ret < 0) { /*errore*/ }
+        if(ret < 0) { perror("Error0 select"); }
         for(i = 0; i <= fdmax; i++) {
             if(FD_ISSET(i, &read_fds)) {
                 /*if(i == sd) {
@@ -51,13 +51,14 @@ void ioMultiplexing(int* sd, char* commands_buffer) {
 
                 } else*/ if(i == STANDARD_INPUT){
                     // prelievo il comando dallo standard input e lo salvo nel buffer
-                    read(STANDARD_INPUT, (void*)commands_buffer, DEVICE_COMMAND_SIZE);
+                    read(STANDARD_INPUT, (void*)commands_buffer, BUFFER_SIZE);
                     
                     // eseguo l'azione prevista dal comando
                     ret = executeDeviceCommand((char*)commands_buffer, &user, sd, NULL);
                     if(ret == -2) { printf("Comando non valido, i comandi accettati sono hanging, show, chat, share e out\n"); }
+                    
                     // pulisco il buffer dei comandi
-                    memset(&commands_buffer, '\0', BUFFER_SIZE);
+                    memset(commands_buffer, '\0', BUFFER_SIZE);
                 } /*else {
                     pid = fork();
                     if(pid < 0) { }
@@ -104,14 +105,18 @@ int main(int argc, char *argv[]) {
     // altrimenti ad fdmax verrebbe assegnato un valore non significativo
     while(user.user_state == DISCONNECT) {
         // prelievo il comando dallo standard input e lo salvo nel buffer
-        read(STANDARD_INPUT, (void*)&commands_buffer, DEVICE_COMMAND_SIZE);
+        read(STANDARD_INPUT, (void*)&commands_buffer, BUFFER_SIZE);
         
         // eseguo l'azione prevista dal comando
         ret = executeDeviceCommand((char*)&commands_buffer, &user, &sd, &server_addr);
         if(ret == -1) { printf("Comando non valido, i comandi accettati sono in e signup\n"); }
+        
         // pulisco il buffer dei comandi
         memset(&commands_buffer, '\0', BUFFER_SIZE);
     }
+
+    // stampo il menu dei comandi disponibili
+    printCommands(user);
 
     ioMultiplexing(&sd, (char*)&commands_buffer);
     
