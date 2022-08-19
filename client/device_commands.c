@@ -23,12 +23,15 @@ void printCommands(struct User user) {
     Permette a un utente di creare un account sul server, 
     caratterizzato da username e password.
 */
-void signup(char* command, char* username, char* password, int* sd) {
+void signup(char* command, char* username, char* password, int* sd, struct sockaddr_in* server_addr) {
 
     int len;
     int ret;
-    char* message;
+    char* message; 
 
+    // stabilisco la connessione con il server
+    connect_to_server(sd, server_addr);
+    
     // unisco le tre stringhe per inviare un solo messaggio
     len = strlen(command) + strlen(username) + strlen(password) + 2; // il +2 serve per gli spazi
     message = malloc(len);
@@ -44,8 +47,12 @@ void signup(char* command, char* username, char* password, int* sd) {
     printf("Registrazione avvenuta con successo!\n");
 }
 
-void in(char* command, int srv_port, char* username, char* password, int* sd) {
+void in(char* command, int srv_port, char* username, char* password, int* sd, struct sockaddr_in* server_addr) {
     
+    // stabilisco la connessione con il server
+    connect_to_server(sd, server_addr);
+
+    printf("Login avvenuto con successo!\n");
 }
 
 void hanging() {
@@ -72,7 +79,7 @@ void out() {
     A seconda del comando digitato dall'utente
     si esegue la funzione corrispondente.
 */
-int executeDeviceCommand(char* buffer, struct User* user, int* sd) {
+int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockaddr_in* server_addr) {
 
     char* command = NULL;
     char* file_name = NULL;
@@ -80,7 +87,7 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd) {
     // prendo il comando inserito 
     command = strtok(buffer, " ");
 
-    // controllo anche che per i comandi in e signin l'utente sia disconnesso
+    // controllo che per i comandi in e signin l'utente sia disconnesso
     // per gli altri comandi l'utente deve essere connesso.
     // Poi a seconda del comando inserito prendo i parametri 
     // e chiamo la funzione 
@@ -89,12 +96,14 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd) {
             user->srv_port = atoi(strtok(NULL, " "));
             user->my_username = strtok(NULL, " ");
             user->my_password = strtok(NULL, " ");
-            in(command, user->srv_port, user->my_username, user->my_password, sd);
+             
+            in(command, user->srv_port, user->my_username, user->my_password, sd, server_addr);
             user->user_state = LOGGED;
         } else if(!strncmp(command, "signup", 6)) { 
             user->my_username = strtok(NULL, " ");
             user->my_password = strtok(NULL, " ");
-            signup(command, user->my_username, user->my_password, sd);
+
+            signup(command, user->my_username, user->my_password, sd, server_addr);
             user->user_state = LOGGED;
         } else { // in caso di comando non valido restituisco -1
             return -1;
