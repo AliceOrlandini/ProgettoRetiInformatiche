@@ -32,15 +32,15 @@ int serveDeviceRequest(char* request) {
     } else if(!strncmp(command, "signup", 6)) {
         printf("SIGNUP\n");
     } else if(!strncmp(command, "hanging", 7)) {
-        
+        printf("HANGING\n");
     } else if(!strncmp(command, "show", 4)) {
-        
+        printf("SHOW\n");
     } else if(!strncmp(command, "chat", 4)) {
-        
+        printf("CHAT\n");
     } else if(!strncmp(command, "share", 5)) {
-        
+        printf("SHARE\n");
     } else if(!strncmp(command, "out", 3)) {
-        
+        printf("OUT\n");
     } else {
         return -1;
     }
@@ -97,7 +97,7 @@ void ioMultiplexing(int listener) {
                     else if(pid == 0) { // sono nel processo figlio
                         close(listener);
                         
-                        // inizializzo il buffer per ricevere messaggi
+                        // inizializzo il buffer per ricevere la lunghezza
                         memset(&buffer, '\0', sizeof(buffer));
                         
                         // ricevo la quantità di dati
@@ -106,6 +106,9 @@ void ioMultiplexing(int listener) {
                         // riconverto la dimensione in formato host
                         len = ntohs(lmsg);
                         
+                        // inizializzo il buffer per ricevere il dato
+                        memset(&buffer, '\0', len);
+
                         // ricevo i dati
                         ret = recv(i, (void*)&buffer, len, 0);
                         if(ret < 0) { perror("Error3 receive_TCP data"); }
@@ -132,8 +135,11 @@ void ioMultiplexing(int listener) {
 int main(int argc, char *argv[]) {
 
     int listener;
+    in_port_t srv_port; // = atoi(argv[1]);
     struct sockaddr_in server_addr;
     int ret;
+
+    srv_port = (argv[1] == NULL)? SERVER_PORT:atoi(argv[1]);
 
     printf("***** SERVER STARTED *****\n");
     printCommands();
@@ -143,7 +149,7 @@ int main(int argc, char *argv[]) {
     
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(4242);
+    server_addr.sin_port = htons(srv_port);
     inet_pton(AF_INET, LOCALHOST, &server_addr.sin_addr);
 
     ret = bind(listener, (struct sockaddr*)&server_addr, sizeof(server_addr));
