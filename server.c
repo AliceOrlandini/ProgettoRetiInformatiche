@@ -28,11 +28,11 @@ int serveDeviceRequest(char* request) {
     command = strtok(request, " ");
 
     if(!strncmp(command, "in", 2)) {
-    
+        printf("IN\n");
     } else if(!strncmp(command, "signup", 6)) {
         printf("SIGNUP\n");
     } else if(!strncmp(command, "hanging", 7)) {
-        printf("IN\n");
+        
     } else if(!strncmp(command, "show", 4)) {
         
     } else if(!strncmp(command, "chat", 4)) {

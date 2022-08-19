@@ -18,7 +18,7 @@ struct User user;
     gestione dei descrittori pronti 
     tramite l'io multiplexing 
 */
-void ioMultiplexing(int* sd) {
+void ioMultiplexing(int* sd, char* commands_buffer) {
     
     // pid_t pid;
     int ret;
@@ -28,10 +28,8 @@ void ioMultiplexing(int* sd) {
     int i;
 
     char message_buffer[BUFFER_SIZE];
-    char commands_buffer[BUFFER_SIZE];
 
     memset(&message_buffer, '\0', BUFFER_SIZE);
-    memset(&commands_buffer, '\0', BUFFER_SIZE);
 
     FD_ZERO(&master);
     FD_ZERO(&read_fds);
@@ -43,7 +41,7 @@ void ioMultiplexing(int* sd) {
     for(;;) {
         read_fds = master;
         ret = select(fdmax + 1, &read_fds, NULL, NULL, NULL);
-        if(ret < 0) { /*errore*/ }
+        if(ret < 0) { perror("Error0 select"); }
         for(i = 0; i <= fdmax; i++) {
             if(FD_ISSET(i, &read_fds)) {
                 /*if(i == sd) {
@@ -53,14 +51,14 @@ void ioMultiplexing(int* sd) {
 
                 } else*/ if(i == STANDARD_INPUT){
                     // prelievo il comando dallo standard input e lo salvo nel buffer
-                    read(STANDARD_INPUT, (void*)&commands_buffer, DEVICE_COMMAND_SIZE);
+                    read(STANDARD_INPUT, (void*)commands_buffer, BUFFER_SIZE);
                     
                     // eseguo l'azione prevista dal comando
-                    ret = executeDeviceCommand((char*)&commands_buffer, &user, sd);
-                    if(ret == -1) { printf("Comando non valido, i comandi accettati sono in e signup\n"); }
-                    else if(ret == -2) { printf("Comando non valido, i comandi accettati sono hanging, show, chat, share e out\n"); }
+                    ret = executeDeviceCommand((char*)commands_buffer, &user, sd, NULL);
+                    if(ret == -2) { printf("Comando non valido, i comandi accettati sono hanging, show, chat, share e out\n"); }
+                    
                     // pulisco il buffer dei comandi
-                    memset(&commands_buffer, '\0', BUFFER_SIZE);
+                    memset(commands_buffer, '\0', BUFFER_SIZE);
                 } /*else {
                     pid = fork();
                     if(pid < 0) { }
@@ -93,6 +91,8 @@ int main(int argc, char *argv[]) {
     in_port_t device_port = atoi(argv[1]);
     int sd;
     struct sockaddr_in server_addr;
+    int ret;
+    char commands_buffer[BUFFER_SIZE];
 
     // imposto i valori dell'utente
     user.user_state = DISCONNECT;
@@ -100,12 +100,25 @@ int main(int argc, char *argv[]) {
 
     // stampo i comandi disponibili
     printCommands(user);
-    
-    // devo fare la connessione al server prima dell'iomultiplexing
-    // altrimenti a fdmax viene assegnato un valore non significativo
-    connect_to_server(&sd, &server_addr); 
 
-    ioMultiplexing(&sd);
+    // Finchè l'utente non si connette non faccio partire l'iomultiplexing 
+    // altrimenti ad fdmax verrebbe assegnato un valore non significativo
+    while(user.user_state == DISCONNECT) {
+        // prelievo il comando dallo standard input e lo salvo nel buffer
+        read(STANDARD_INPUT, (void*)&commands_buffer, BUFFER_SIZE);
+        
+        // eseguo l'azione prevista dal comando
+        ret = executeDeviceCommand((char*)&commands_buffer, &user, &sd, &server_addr);
+        if(ret == -1) { printf("Comando non valido, i comandi accettati sono in e signup\n"); }
+        
+        // pulisco il buffer dei comandi
+        memset(&commands_buffer, '\0', BUFFER_SIZE);
+    }
+
+    // stampo il menu dei comandi disponibili
+    printCommands(user);
+
+    ioMultiplexing(&sd, (char*)&commands_buffer);
     
     return  0;
 }
