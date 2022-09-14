@@ -8,9 +8,9 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "./client/device_consts.h"
-#include "./client/device_commands.h"
-#include "./client/network.h"
+#include "./client/include/device_consts.h"
+#include "./client/include/device_commands.h"
+#include "./client/include/network.h"
 
 struct User user;
 

@@ -8,8 +8,8 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "./server/server_consts.h"
-#include "./server/server_commands.h"
+#include "./server/include/server_consts.h"
+#include "./server/include/server_commands.h"
 
 /*#include <sys/select.h>
 #include <stdlib.h>
