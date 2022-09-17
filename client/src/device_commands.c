@@ -85,10 +85,7 @@ int in(char* command, int srv_port, char* username, char* password, int* sd, str
 */
 void hanging(char* command, int* sd) {
     
-    int len;
     int ret;
-
-    len = strlen(command);
 
     // invio al server il messaggio
     ret = send_TCP(sd, command);
@@ -148,8 +145,7 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
 
     // controllo che per i comandi in e signin l'utente sia disconnesso
     // per gli altri comandi l'utente deve essere connesso.
-    // Poi a seconda del comando inserito prendo i parametri 
-    // e chiamo la funzione 
+    // Poi a seconda del comando inserito prendo i parametri e chiamo la funzione
     if(user->user_state == DISCONNECT) {
         if(!strncmp(command, "in", 2)) {
             user->srv_port = atoi(strtok(NULL, " "));

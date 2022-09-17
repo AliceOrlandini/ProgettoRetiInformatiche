@@ -42,7 +42,7 @@ int send_TCP(int* sd, char* message) {
     int ret;
     uint16_t lmsg;
     
-    len = strlen(message);
+    len = strlen(message); 
     lmsg = htons(len);
     
     // invio la dimensione dei dati che invierò

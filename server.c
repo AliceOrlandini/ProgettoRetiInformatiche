@@ -17,7 +17,7 @@
 #include <stdbool.h>*/
 
 /*
-    gestione della richiesta del device, a seconda
+    Gestione della richiesta del device, a seconda
     del comando ricevuto si invoca la funzione corrispondente
 */
 int serveDeviceRequest(char* request) {
@@ -48,7 +48,7 @@ int serveDeviceRequest(char* request) {
 }
 
 /* 
-    gestione dei descrittori pronti 
+    Gestione dei descrittori pronti 
     tramite l'io multiplexing 
 */
 void ioMultiplexing(int listener) {
