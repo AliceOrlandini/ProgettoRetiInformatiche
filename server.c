@@ -87,7 +87,7 @@ void ioMultiplexing(int listener) {
                         FD_SET(new_sd, &master);
                         if(new_sd > fdmax) { fdmax = new_sd; }
                     }
-                } else if(i == STANDARD_INPUT){
+                } else if(i == STANDARD_INPUT) {
                     // prelievo il comando dallo standard input e lo salvo nel buffer
                     read(STANDARD_INPUT, (void*)&buffer, SERVER_COMMAND_SIZE);
                     // eseguo l'azione prevista dal comando
@@ -97,47 +97,47 @@ void ioMultiplexing(int listener) {
                     if(pid < 0) { perror("Error1 fork"); }
                     else if(pid == 0) { // sono nel processo figlio
                         close(listener);
-                        
-                        // inizializzo il buffer per ricevere la lunghezza
-                        memset(&buffer, '\0', sizeof(buffer));
-                        printf("STO PER FARE LA RECV\n");
-                        
-                        // ricevo la quantità di dati
-                        ret = recv(i, (void*)&lmsg, sizeof(uint16_t), 0);
-                        if(ret < 0) { perror("Error2 receive_TCP len"); exit(0); }
 
-                        // controllo se ho ricevuto 0 byte perchè  
-                        // nel caso il client si è disconnesso
-                        if(ret == 0) { 
-                            printf("Il client si è disconnesso\n"); 
+                        while(1) {
+                            // inizializzo il buffer per ricevere la lunghezza
+                            memset(&buffer, '\0', sizeof(buffer));
                             
-                            // chiudo il socket di comunicazione
-                            close(new_sd);
-                            // lo tolgo dal set di monitorati
-                            FD_CLR(new_sd, &master);
+                            // ricevo la quantità di dati
+                            ret = recv(i, (void*)&lmsg, sizeof(uint16_t), 0);
+                            if(ret < 0) { perror("Error2 receive_TCP len"); exit(0); }
 
-                            exit(0);
+                            // controllo se ho ricevuto 0 byte perchè  
+                            // nel caso il client si è disconnesso
+                            if(ret == 0) { break; }
+                            // riconverto la dimensione in formato host
+                            len = ntohs(lmsg);
+                            
+                            // inizializzo il buffer per ricevere il dato
+                            memset(&buffer, '\0', len);
+
+                            // ricevo i dati
+                            ret = recv(i, (void*)&buffer, len, 0);
+                            if(ret < 0) { perror("Error3 receive_TCP data"); exit(0); }
+                            if(ret == 0) { break; }
+                            printf("Richiesta ricevuta da un client %s\n", buffer);
+
+                            // a seconda del tipo di richiesta eseguo la funzione corrispondente
+                            ret = serveDeviceRequest(buffer);
+                            if(ret < 0) { printf("Richiesta non valida\n"); }
                         }
-                        // riconverto la dimensione in formato host
-                        len = ntohs(lmsg);
                         
-                        // inizializzo il buffer per ricevere il dato
-                        memset(&buffer, '\0', len);
-
-                        // ricevo i dati
-                        ret = recv(i, (void*)&buffer, len, 0);
-                        if(ret < 0) { perror("Error3 receive_TCP data"); exit(0); }
-                        printf("Richiesta ricevuta da un client %s\n", buffer);
-
-                        // a seconda del tipo di richiesta eseguo la funzione corrispondente
-                        ret = serveDeviceRequest(buffer);
-                        if(ret < 0) { printf("Richiesta non valida\n"); }
-                        
+                        printf("Il client si è disconnesso\n"); 
+                            
+                        // chiudo il socket di comunicazione
+                        close(new_sd);
+                        // lo tolgo dal set di monitorati
+                        FD_CLR(new_sd, &master);
+                        // termino il processo figlio
                         exit(0);
                     } else { // sono nel processo padre
-                        // chiudo il socket connesso
+                        // chiudo il socket di comunicazione
                         close(i);
-                        // tolgo il descrittore del socket connesso dal set dei monitorati
+                        // tolgo il descrittore del socket di comunicazione dal set dei monitorati
                         FD_CLR(i, &master);
                     }  
                 }
@@ -149,7 +149,7 @@ void ioMultiplexing(int listener) {
 int main(int argc, char *argv[]) {
 
     int listener;
-    in_port_t srv_port; // = atoi(argv[1]);
+    in_port_t srv_port;
     struct sockaddr_in server_addr;
     int ret;
 
