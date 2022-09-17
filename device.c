@@ -22,6 +22,7 @@ void ioMultiplexing(int* sd, char* commands_buffer) {
     
     // pid_t pid;
     int ret;
+    int len;
     fd_set master;
     fd_set read_fds;
     int fdmax;
@@ -47,6 +48,8 @@ void ioMultiplexing(int* sd, char* commands_buffer) {
                 if(i == STANDARD_INPUT){
                     // prelievo il comando dallo standard input e lo salvo nel buffer
                     read(STANDARD_INPUT, (void*)commands_buffer, BUFFER_SIZE);
+                    len = strlen(commands_buffer);
+                    commands_buffer[len-1] = '\0'; // per togliere il \n
                     
                     // eseguo l'azione prevista dal comando
                     ret = executeDeviceCommand((char*)commands_buffer, &user, sd, NULL);
