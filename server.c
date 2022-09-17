@@ -79,6 +79,7 @@ void ioMultiplexing(int listener) {
         for(i = 0; i <= fdmax; i++) {
             if(FD_ISSET(i, &read_fds)) {
                 if(i == listener) {
+                    // accetto la nuova richiesta di connessione
                     new_sd = accept(listener, (struct sockaddr*)&client_addr, (socklen_t*)&addrlen);
                     if(new_sd < 0) { perror("Error0 accept"); }
                     else {
@@ -91,7 +92,7 @@ void ioMultiplexing(int listener) {
                     read(STANDARD_INPUT, (void*)&buffer, SERVER_COMMAND_SIZE);
                     // eseguo l'azione prevista dal comando
                     executeServerCommand((char*)&buffer);
-                } else { // Il socket connesso è pronto
+                } else { 
                     pid = fork();
                     if(pid < 0) { perror("Error1 fork"); }
                     else if(pid == 0) { // sono nel processo figlio
@@ -99,10 +100,24 @@ void ioMultiplexing(int listener) {
                         
                         // inizializzo il buffer per ricevere la lunghezza
                         memset(&buffer, '\0', sizeof(buffer));
+                        printf("STO PER FARE LA RECV\n");
                         
                         // ricevo la quantità di dati
                         ret = recv(i, (void*)&lmsg, sizeof(uint16_t), 0);
-                        if(ret < 0) { perror("Error2 receive_TCP len"); }
+                        if(ret < 0) { perror("Error2 receive_TCP len"); exit(0); }
+
+                        // controllo se ho ricevuto 0 byte perchè  
+                        // nel caso il client si è disconnesso
+                        if(ret == 0) { 
+                            printf("Il client si è disconnesso\n"); 
+                            
+                            // chiudo il socket di comunicazione
+                            close(new_sd);
+                            // lo tolgo dal set di monitorati
+                            FD_CLR(new_sd, &master);
+
+                            exit(0);
+                        }
                         // riconverto la dimensione in formato host
                         len = ntohs(lmsg);
                         
@@ -111,14 +126,13 @@ void ioMultiplexing(int listener) {
 
                         // ricevo i dati
                         ret = recv(i, (void*)&buffer, len, 0);
-                        if(ret < 0) { perror("Error3 receive_TCP data"); }
+                        if(ret < 0) { perror("Error3 receive_TCP data"); exit(0); }
                         printf("Richiesta ricevuta da un client %s\n", buffer);
 
                         // a seconda del tipo di richiesta eseguo la funzione corrispondente
                         ret = serveDeviceRequest(buffer);
                         if(ret < 0) { printf("Richiesta non valida\n"); }
                         
-                        // close(new_sd);
                         exit(0);
                     } else { // sono nel processo padre
                         // chiudo il socket connesso

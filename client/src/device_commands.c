@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "device_commands.h"
-#include "device_consts.h"
-#include "network.h"
+#include "./../include/device_commands.h"
+#include "./../include/device_consts.h"
+#include "./../include/network.h"
 
 /*
     Stampa a video i comandi disponibili a 
@@ -58,7 +58,7 @@ int in(char* command, int srv_port, char* username, char* password, int* sd, str
     int len;
     int ret;
     char* message; 
-
+    
     // stabilisco la connessione con il server
     ret = connect_to_server(sd, server_addr, srv_port);
     if(ret < 0) { return -1; }
@@ -83,8 +83,19 @@ int in(char* command, int srv_port, char* username, char* password, int* sd, str
     Permette all'utente di ricevere la lista degli utenti 
     chi gli hanno inviato messaggi mentre era offline.
 */
-void hanging() {
+void hanging(char* command, int* sd) {
     
+    int len;
+    int ret;
+
+    len = strlen(command);
+
+    // invio al server il messaggio
+    ret = send_TCP(sd, command);
+    if(ret < 0) { printf("Impossibile eseguire hanging\n"); return; }
+
+    printf("Hanging avvenuta con successo!\n");
+    return;
 }
 
 /*
@@ -119,6 +130,7 @@ void out(int* sd) {
     // invio la richiesta di disconnessione
     ret = disconnect_to_server(sd);
     if(ret == -1) { printf("Impossibile disconnettersi\n"); }
+    printf("Disconnessione avvenuta con successo!\n");
 }
 
 /*
@@ -159,18 +171,22 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
         }
     } else if(user->user_state == LOGGED) {
         if(!strncmp(command, "hanging", 7)) {
-            hanging();
+            hanging(command, sd);
         } else if(!strncmp(command, "show", 4)) {
             user->dst_username = strtok(NULL, " ");
+            
             show(user->dst_username);
         } else if(!strncmp(command, "chat", 4)) {
             user->dst_username = strtok(NULL, " ");
+            
             chat(user->dst_username);
         } else if(!strncmp(command, "share", 5)) {
             file_name = strtok(NULL, " ");
+            
             share(file_name);
         } else if(!strncmp(command, "out", 3)) {
             out(sd);
+            
             user->user_state = DISCONNECT;
         } else { // in caso di comando non valido restituisco -2
             return -2;

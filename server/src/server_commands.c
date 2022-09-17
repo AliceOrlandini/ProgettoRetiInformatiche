@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "server_commands.h"
-#include "server_consts.h"
+#include "./../include/server_commands.h"
+#include "./../include/server_consts.h"
 
 /* stampa i comandi che il server ha a disposizione */
 void printCommands() {

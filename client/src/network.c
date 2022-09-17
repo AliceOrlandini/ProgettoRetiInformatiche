@@ -8,11 +8,11 @@
 #include <sys/time.h>
 #include <unistd.h> 
 
-#include "network.h"
-#include "device_consts.h"
+#include "./../include/network.h"
+#include "./../include/device_consts.h"
 
 /*
-    funzione per la connessione al server
+    Funzione per la connessione al server
 */
 int connect_to_server(int* sd, struct sockaddr_in* server_addr, in_port_t srv_port) {
     
@@ -34,7 +34,7 @@ int connect_to_server(int* sd, struct sockaddr_in* server_addr, in_port_t srv_po
 }
 
 /*
-    funzione per l'invio di messaggi TCP al server
+    Funzione per l'invio di messaggi TCP al server
 */
 int send_TCP(int* sd, char* message) {
 
@@ -44,9 +44,11 @@ int send_TCP(int* sd, char* message) {
     
     len = strlen(message);
     lmsg = htons(len);
+    
     // invio la dimensione dei dati che invierò
     ret = send(*sd, (void*)&lmsg, sizeof(uint16_t), 0);
     if(ret < 0) { perror("Error0 send_TCP len"); return -1; }
+    
     // invio i dati
     ret = send(*sd, (void*)message, len, 0);
     if(ret < 0) { perror("Error1 send_TCP data"); return -2; }
@@ -55,7 +57,7 @@ int send_TCP(int* sd, char* message) {
 }
 
 /*
-    funzione per la ricezione di messaggi TCP da parte del server
+    Funzione per la ricezione di messaggi TCP da parte del server
 */
 void receive_TCP(int* sd, char* message) {
 
@@ -63,9 +65,11 @@ void receive_TCP(int* sd, char* message) {
 
 int disconnect_to_server(int* sd) {
     
-    /* int ret; 
+    int ret; 
 
+    // chiudo il socket
     ret = close(*sd);
-    if(ret < 0) { perror("Error0 disconnect_to_server"); return -1; } */
+    if(ret < 0) { perror("Error0 disconnect_to_server"); return -1; } 
+
     return 0;
 }
