@@ -22,9 +22,11 @@
     Gestione della richiesta del device, a seconda
     del comando ricevuto si invoca la funzione corrispondente
 */
-int serveDeviceRequest(char* request) {
+int serveDeviceRequest(int* sd, char* request) {
 
     char* command = NULL;
+    char* dev_username;
+    char* dev_password;
     
     // prendo il comando inserito 
     command = strtok(request, " ");
@@ -32,7 +34,11 @@ int serveDeviceRequest(char* request) {
     if(!strncmp(command, "in", 2)) {
         in();
     } else if(!strncmp(command, "signup", 6)) {
-        signup();
+
+        dev_username = strtok(NULL, " ");
+        dev_password = strtok(NULL, " ");
+        
+        signup(sd, dev_username, dev_password);
     } else if(!strncmp(command, "hanging", 7)) {
         hanging();
     } else if(!strncmp(command, "show", 4)) {
@@ -62,8 +68,6 @@ void ioMultiplexing(int listener) {
     int fdmax;
     int i;
     int ret;
-    int len;
-    uint16_t lmsg;
     char buffer[BUFFER_SIZE];
 
     FD_ZERO(&master);
@@ -90,8 +94,9 @@ void ioMultiplexing(int listener) {
                 } else if(i == STANDARD_INPUT) {
                     // prelievo il comando dallo standard input e lo salvo nel buffer
                     read(STANDARD_INPUT, (void*)&buffer, SERVER_COMMAND_SIZE);
+                    
                     // eseguo l'azione prevista dal comando
-                    executeServerCommand((char*)&buffer);
+                    executeServerCommand((char*)&buffer, &listener);
                 } else { 
                     pid = fork();
                     if(pid < 0) { perror("Error1 fork"); }
@@ -101,28 +106,21 @@ void ioMultiplexing(int listener) {
                         while(1) {
                             // inizializzo il buffer per ricevere la lunghezza
                             memset(&buffer, '\0', sizeof(buffer));
-                            
-                            // ricevo la quantità di dati
-                            ret = recv(i, (void*)&lmsg, sizeof(uint16_t), 0);
-                            if(ret < 0) { perror("Error2 receive_TCP len"); exit(0); }
 
-                            // controllo se ho ricevuto 0 byte perchè  
-                            // nel caso il client si è disconnesso
-                            if(ret == 0) { break; }
-                            // riconverto la dimensione in formato host
-                            len = ntohs(lmsg);
-                            
-                            // inizializzo il buffer per ricevere il dato
-                            memset(&buffer, '\0', len);
+                            ret = receive_TCP(&i, buffer);
 
-                            // ricevo i dati
-                            ret = recv(i, (void*)&buffer, len, 0);
-                            if(ret < 0) { perror("Error3 receive_TCP data"); exit(0); }
-                            if(ret == 0) { break; }
+                            // se ricevo -2 dalla receive significa
+                            // che il client si è disconnesso
+                            if(ret == -2) { break; }
+
+                            // se ricevo -2 dalla receive significa che
+                            // la comunicazione ha avuto qualche problema
+                            if(ret == -1) { continue; }
+
                             printf("Richiesta ricevuta da un client %s\n", buffer);
 
                             // a seconda del tipo di richiesta eseguo la funzione corrispondente
-                            ret = serveDeviceRequest(buffer);
+                            ret = serveDeviceRequest(&i, buffer);
                             if(ret < 0) { printf("Richiesta non valida\n"); }
                         }
                         
