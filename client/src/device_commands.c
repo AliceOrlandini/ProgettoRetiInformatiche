@@ -99,23 +99,77 @@ void hanging(char* command, int* sd) {
     Consente all'utente di ricevere i messaggi 
     pendenti dall'utente username.
 */
-void show(char* username) {
+void show(char* command, int* sd, char* username) {
     
+    int len;
+    int ret;
+    char* message; 
+
+    // unisco le tre stringhe per inviare un solo messaggio
+    len = strlen(command) + strlen(username) + 2; // il +2 serve per gli spazi
+    message = malloc(len);
+    snprintf(message, len, "%s %s", command, username);
+    
+    // invio al server il messaggio
+    ret = send_TCP(sd, message);
+    if(ret < 0) { printf("Impossibile eseguire la show\n"); free(message); return; }
+    
+    // libero la memoria utilizzata per il messaggio
+    free(message);
+
+    printf("Show inviata con successo!\n");
+    return;
 }
 
 /*
     Avvia una chat con l'utente username.
 */
-void chat(char* username) {
+void chat(char* command, int* sd, char* username) {
     
+    int len;
+    int ret;
+    char* message; 
+
+    // unisco le tre stringhe per inviare un solo messaggio
+    len = strlen(command) + strlen(username) + 2; // il +2 serve per gli spazi
+    message = malloc(len);
+    snprintf(message, len, "%s %s", command, username);
+    
+    // invio al server il messaggio
+    ret = send_TCP(sd, message);
+    if(ret < 0) { printf("Impossibile iniziare la chat\n"); free(message); return; }
+    
+    // libero la memoria utilizzata per il messaggio
+    free(message);
+
+    printf("Chat iniziata con successo!\n");
+    return;
 }
 
 /*
     Invia il file file_name al device su cui è connesso
     l'utente o gli utenti con cui si sta chattando. 
 */
-void share(char* file_name) {
+void share(char* command, int* sd, char* file_name) {
     
+    int len;
+    int ret;
+    char* message; 
+
+    // unisco le tre stringhe per inviare un solo messaggio
+    len = strlen(command) + strlen(file_name) + 2; // il +2 serve per gli spazi
+    message = malloc(len);
+    snprintf(message, len, "%s %s", command, file_name);
+    
+    // invio al server il messaggio
+    ret = send_TCP(sd, message);
+    if(ret < 0) { printf("Impossibile fare la share\n"); free(message); return; }
+    
+    // libero la memoria utilizzata per il messaggio
+    free(message);
+
+    printf("Share avvenuta con successo!\n");
+    return;
 }
 
 /*
@@ -124,6 +178,7 @@ void share(char* file_name) {
 void out(int* sd) {
     
     int ret;
+    
     // invio la richiesta di disconnessione
     ret = disconnect_to_server(sd);
     if(ret == -1) { printf("Impossibile disconnettersi\n"); }
@@ -151,6 +206,8 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
             user->srv_port = atoi(strtok(NULL, " "));
             user->my_username = strtok(NULL, " ");
             user->my_password = strtok(NULL, " ");
+
+            if(user->srv_port == 0 || user->my_username == NULL || user->my_password == NULL) { return -1; }
              
             ret = in(command, user->srv_port, user->my_username, user->my_password, sd, server_addr);
             if(ret == 0) { user->user_state = LOGGED; }
@@ -158,6 +215,8 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
         } else if(!strncmp(command, "signup", 6)) { 
             user->my_username = strtok(NULL, " ");
             user->my_password = strtok(NULL, " ");
+
+            if(user->my_username == NULL || user->my_password == NULL) { return -1; }
 
             ret = signup(command, user->my_username, user->my_password, sd, server_addr);
             if(ret == 0) { user->user_state = LOGGED; }
@@ -170,16 +229,22 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
             hanging(command, sd);
         } else if(!strncmp(command, "show", 4)) {
             user->dst_username = strtok(NULL, " ");
+
+            if(user->dst_username == NULL) { return -2; }
             
-            show(user->dst_username);
+            show(command, sd, user->dst_username);
         } else if(!strncmp(command, "chat", 4)) {
             user->dst_username = strtok(NULL, " ");
+
+            if(user->dst_username == NULL) { return -2; }
             
-            chat(user->dst_username);
+            chat(command, sd, user->dst_username);
         } else if(!strncmp(command, "share", 5)) {
             file_name = strtok(NULL, " ");
+
+            if(file_name == NULL) { return -2; }
             
-            share(file_name);
+            share(command, sd, file_name);
         } else if(!strncmp(command, "out", 3)) {
             out(sd);
             

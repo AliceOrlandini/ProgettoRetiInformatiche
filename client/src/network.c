@@ -34,7 +34,7 @@ int connect_to_server(int* sd, struct sockaddr_in* server_addr, in_port_t srv_po
 }
 
 /*
-    Funzione per l'invio di messaggi TCP al server
+    Funzione per l'invio di messaggi TCP
 */
 int send_TCP(int* sd, char* message) {
 
@@ -57,7 +57,7 @@ int send_TCP(int* sd, char* message) {
 }
 
 /*
-    Funzione per la ricezione di messaggi TCP da parte del server
+    Funzione per la ricezione di messaggi TCP
 */
 void receive_TCP(int* sd, char* message) {
 
