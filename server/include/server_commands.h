@@ -1,5 +1,5 @@
 void printCommands();
 void help();
 void list();
-void esc();
-void executeServerCommand(char*);
+void esc(int*);
+void executeServerCommand(char*, int*);

@@ -83,10 +83,37 @@ int send_TCP(int* sd, char* message) {
 /*
     Funzione per la ricezione di messaggi TCP
 */
-void receive_TCP(int* sd, char* message) {
+int receive_TCP(int* sd, char* message) {
+    
+    int ret; 
+    int len;
+    uint16_t lmsg;
 
+    // ricevo la quantità di dati
+    ret = recv(*sd, (void*)&lmsg, sizeof(uint16_t), 0);
+    if(ret < 0) { perror("Error2 receive_TCP len"); return -1; }
+
+    // controllo se ho ricevuto 0 byte perchè  
+    // nel caso il socket si è disconnesso
+    if(ret == 0) { return -2; }
+    
+    // riconverto la dimensione in formato host
+    len = ntohs(lmsg);
+
+    // inizializzo il buffer per ricevere il dato
+    memset(message, '\0', len);
+
+    // ricevo i dati
+    ret = recv(*sd, (void*)message, len, 0);
+    if(ret < 0) { perror("Error3 receive_TCP data"); return -1; }
+    if(ret == 0) { return -2; }
+    
+    return 0;
 }
 
+/*
+    Funzione per chiudere il socket
+*/
 int disconnect_to_server(int* sd) {
     
     int ret; 

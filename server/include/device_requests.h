@@ -1,5 +1,5 @@
 void in();
-void signup();
+void signup(int*, char*, char*);
 void hanging();
 void show();
 void share();

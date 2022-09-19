@@ -41,9 +41,15 @@ int signup(char* command, char* username, char* password, int* sd, struct sockad
     // invio al server il messaggio
     ret = send_TCP(sd, message);
     if(ret < 0) { printf("Impossibile eseguire la registrazione\n"); free(message); return -1; }
-    
+
+    // aspetto che il server mi comunichi che la registrazione è avvenuta con successo
+    ret = receive_TCP(sd, message); 
+    if(strncmp(message, "ok", 2)) {
+        printf("Impossibile eseguire la registrazione\n"); free(message); return -1;
+    }
+
     // libero la memoria utilizzata per il messaggio
-    free(message);
+    free(message); 
     
     printf("Registrazione avvenuta con successo!\n");
     return 0;
