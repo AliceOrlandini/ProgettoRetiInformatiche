@@ -10,6 +10,8 @@
 
 #include "./server/include/server_consts.h"
 #include "./server/include/server_commands.h"
+#include "./server/include/device_requests.h"
+#include "./network/include/network.h"
 
 /*#include <sys/select.h>
 #include <stdlib.h>
@@ -28,19 +30,17 @@ int serveDeviceRequest(char* request) {
     command = strtok(request, " ");
 
     if(!strncmp(command, "in", 2)) {
-        printf("IN\n");
+        in();
     } else if(!strncmp(command, "signup", 6)) {
-        printf("SIGNUP\n");
+        signup();
     } else if(!strncmp(command, "hanging", 7)) {
-        printf("HANGING\n");
+        hanging();
     } else if(!strncmp(command, "show", 4)) {
-        printf("SHOW\n");
+        show();
     } else if(!strncmp(command, "chat", 4)) {
-        printf("CHAT\n");
+        chat();
     } else if(!strncmp(command, "share", 5)) {
-        printf("SHARE\n");
-    } else if(!strncmp(command, "out", 3)) {
-        printf("OUT\n");
+        share();
     } else {
         return -1;
     }
@@ -155,23 +155,15 @@ int main(int argc, char *argv[]) {
 
     srv_port = (argv[1] == NULL)? SERVER_PORT:atoi(argv[1]);
 
+    // mostro i comandi disponibili 
     printf("***** SERVER STARTED *****\n");
     printCommands();
-    
-    listener = socket(AF_INET, SOCK_STREAM, 0);
-    if(listener < 0) { perror("Error0 socket"); exit(0); }
-    
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(srv_port);
-    inet_pton(AF_INET, LOCALHOST, &server_addr.sin_addr);
 
-    ret = bind(listener, (struct sockaddr*)&server_addr, sizeof(server_addr));
-    if(ret < 0) { perror("Error1 bind"); exit(0); }
-    
-    ret = listen(listener, BACKLOG);
-    if(ret < 0) { perror("Error2 listen"); exit(0); }
+    // inizializzo il server
+    ret = init_server(&listener, &server_addr, srv_port);
+    if(ret < 0) { exit(0); }
 
+    // faccio partire l'io multiplexing
     ioMultiplexing(listener);
     
     return  0;

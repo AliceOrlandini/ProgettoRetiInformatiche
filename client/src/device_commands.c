@@ -4,7 +4,7 @@
 
 #include "./../include/device_commands.h"
 #include "./../include/device_consts.h"
-#include "./../include/network.h"
+#include "./../../network/include/network.h"
 
 /*
     Stampa a video i comandi disponibili a 

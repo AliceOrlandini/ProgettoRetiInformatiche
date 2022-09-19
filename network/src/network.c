@@ -9,7 +9,31 @@
 #include <unistd.h> 
 
 #include "./../include/network.h"
-#include "./../include/device_consts.h"
+
+/*
+    Funzione per inizializzare il server
+*/
+int init_server(int* sd, struct sockaddr_in* server_addr, in_port_t srv_port) {
+    
+    int ret; 
+
+    *sd = socket(AF_INET, SOCK_STREAM, 0);
+    if(*sd < 0) { perror("Error0 init_server"); return -1; }
+
+    memset(server_addr, 0, sizeof(server_addr));
+    server_addr->sin_family = AF_INET;
+    server_addr->sin_port = htons(srv_port);
+    inet_pton(AF_INET, "127.0.0.1", &server_addr->sin_addr); 
+
+    ret = bind(*sd, (struct sockaddr*)server_addr, sizeof(*server_addr));
+    if(ret < 0) { perror("Error1 bind"); return -1; }
+    
+    ret = listen(*sd, 10);
+    if(ret < 0) { perror("Error2 listen"); return -1; }
+
+    printf("Server inizializzato con successo!\n");
+    return 0;
+}
 
 /*
     Funzione per la connessione al server
@@ -25,7 +49,7 @@ int connect_to_server(int* sd, struct sockaddr_in* server_addr, in_port_t srv_po
     memset(server_addr, 0, sizeof(server_addr));
     server_addr->sin_family = AF_INET;
     server_addr->sin_port = htons(srv_port);
-    inet_pton(AF_INET, LOCALHOST, &server_addr->sin_addr); 
+    inet_pton(AF_INET, "127.0.0.1", &server_addr->sin_addr); 
 
     ret = connect(*sd, (struct sockaddr*)server_addr, (socklen_t)addrlen);
     if(ret < 0) { perror("Error1 connect_to_server"); return -2; }

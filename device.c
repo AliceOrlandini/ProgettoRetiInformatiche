@@ -10,7 +10,7 @@
 
 #include "./client/include/device_consts.h"
 #include "./client/include/device_commands.h"
-#include "./client/include/network.h"
+#include "./network/include/network.h"
 
 struct User user;
 
