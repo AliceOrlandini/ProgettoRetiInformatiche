@@ -10,7 +10,7 @@
     Stampa i comandi che il server ha a disposizione 
 */
 void printCommands() {
-    printf("comandi disponibili:\n1) help --> mostra i dettagli dei comandi\n2) list --> mostra un elenco degli utenti connessi\n3) esc  --> chiude il server\n");
+    printf("\nI comandi disponibili sono:\n1) help --> mostra i dettagli dei comandi.\n2) list --> mostra un elenco degli utenti connessi.\n3) esc  --> chiude il server.\n");
     return;
 }
 

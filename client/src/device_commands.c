@@ -11,11 +11,11 @@
     seconda dello stato dell'utente.
 */
 void printCommands(struct User user) {
-    printf("I comandi disponibili sono:\n");
+    printf("\nI comandi disponibili sono:\n");
     if(user.user_state != LOGGED) {
-        printf("1) in --> per accedere al servizio.\n2) signup --> per creare un account.\n");
+        printf("1) in     --> per accedere al servizio.\n2) signup --> per creare un account.\n");
     } else if(user.user_state == LOGGED) {
-        printf("1) hanging --> per ricevere i messaggi mentre si era offline.\n2) show --> per ricevere i messaggi pendenti dall'utente specificato.\n3) chat --> per chattare con un altro utente.\n4) share --> per condividere un file.\n5) out --> per disconnettersi.\n");
+        printf("1) hanging --> per ricevere i messaggi mentre si era offline.\n2) show    --> per ricevere i messaggi pendenti dall'utente specificato.\n3) chat    --> per chattare con un altro utente.\n4) share   --> per condividere un file.\n5) out     --> per disconnettersi.\n");
     }
 }
 
