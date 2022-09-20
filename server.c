@@ -27,6 +27,7 @@ int serveDeviceRequest(int* sd, char* request) {
     char* command = NULL;
     char* dev_username;
     char* dev_password;
+    char* dev_port;
     
     // prendo il comando inserito 
     command = strtok(request, " ");
@@ -40,8 +41,9 @@ int serveDeviceRequest(int* sd, char* request) {
 
         dev_username = strtok(NULL, " ");
         dev_password = strtok(NULL, " ");
+        dev_port = strtok(NULL, " ");
         
-        signup(sd, dev_username, dev_password);
+        signup(sd, dev_username, dev_password, dev_port);
     } else if(!strncmp(command, "hanging", 7)) {
         hanging();
     } else if(!strncmp(command, "show", 4)) {
@@ -154,13 +156,14 @@ int main(int argc, char *argv[]) {
 
     srv_port = (argv[1] == NULL)? SERVER_PORT:atoi(argv[1]);
 
-    // mostro i comandi disponibili 
     printf("***** SERVER STARTED *****\n");
-    printCommands();
-
+    
     // inizializzo il server
     ret = init_server(&listener, &server_addr, srv_port);
     if(ret < 0) { exit(0); }
+
+    // mostro i comandi disponibili 
+    printCommands();
 
     // faccio partire l'io multiplexing
     ioMultiplexing(listener);

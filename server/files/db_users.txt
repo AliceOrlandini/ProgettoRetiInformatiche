@@ -1,1 +1,2 @@
-alice pass PORT 11:34:30 NULL
+alice password 4242 12:18:25 NULL
+ciao pass 4242 12:45:15 NULL

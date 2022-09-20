@@ -28,7 +28,7 @@ int init_server(int* sd, struct sockaddr_in* server_addr, in_port_t srv_port) {
     ret = bind(*sd, (struct sockaddr*)server_addr, sizeof(*server_addr));
     if(ret < 0) { perror("Error1 bind"); return -1; }
     
-    ret = listen(*sd, 10);
+    ret = listen(*sd, BACKLOG);
     if(ret < 0) { perror("Error2 listen"); return -1; }
 
     printf("Server inizializzato con successo!\n");

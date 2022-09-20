@@ -49,10 +49,9 @@ void ioMultiplexing(int* sd, char* commands_buffer) {
                     
                     // prelievo il comando dallo standard input e lo salvo nel buffer
                     read(STANDARD_INPUT, (void*)commands_buffer, BUFFER_SIZE);
-                    if(user.user_state == LOGGED) {
-                        len = strlen(commands_buffer);
-                        commands_buffer[len-1] = '\0'; // per togliere il \n
-                    }
+                    len = strlen(commands_buffer);
+                    commands_buffer[len-1] = '\0'; // per togliere il \n
+
                     
                     // eseguo l'azione prevista dal comando
                     ret = executeDeviceCommand((char*)commands_buffer, &user, sd, NULL);
@@ -79,7 +78,6 @@ void ioMultiplexing(int* sd, char* commands_buffer) {
 
 int main(int argc, char *argv[]) {
 
-    in_port_t device_port;
     int sd;
     struct sockaddr_in server_addr;
     int ret;
@@ -89,13 +87,11 @@ int main(int argc, char *argv[]) {
     if(argv[1] == NULL) {
         printf("Error: porta device non specificata\n");
         return 0;
-    } else {
-        device_port = atoi(argv[1]);
-    }
+    } 
 
     // imposto i valori dell'utente
     user.user_state = DISCONNECTED;
-    user.my_port = device_port;
+    user.my_port = argv[1];
 
     // pulisco il buffer dei comandi
     memset(&commands_buffer, '\0', BUFFER_SIZE);

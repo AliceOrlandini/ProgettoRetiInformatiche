@@ -23,20 +23,16 @@ void printCommands(struct User user) {
     Permette a un utente di creare un account sul server, 
     caratterizzato da username e password.
 */
-int signup(char* command, char* username, char* password, int* sd, struct sockaddr_in* server_addr) {
+int signup(char* command, char* username, char* password, char* port, int* sd, struct sockaddr_in* server_addr) {
 
     int len;
     int ret;
     char* message; 
-
-    // stabilisco la connessione con il server
-    // ret = connect_to_server(sd, server_addr, SERVER_PORT);
-    // if(ret < 0) { return -1; }
     
     // unisco le tre stringhe per inviare un solo messaggio
-    len = strlen(command) + strlen(username) + strlen(password) + 2; // il +2 serve per gli spazi
+    len = strlen(command) + strlen(username) + strlen(password) + strlen(port) + 4;
     message = malloc(len);
-    snprintf(message, len, "%s %s %s", command, username, password);
+    snprintf(message, len, "%s %s %s %s", command, username, password, port);
     
     // invio al server il messaggio
     ret = send_TCP(sd, message);
@@ -59,18 +55,14 @@ int signup(char* command, char* username, char* password, int* sd, struct sockad
     Permette al device di richiedere al 
     server la connessione al servizio.
 */
-int in(char* command, int srv_port, char* username, char* password, int* sd, struct sockaddr_in* server_addr) {
+int in(char* command, char* username, char* password, int* sd, struct sockaddr_in* server_addr) {
     
     int len;
     int ret;
     char* message; 
-    
-    // stabilisco la connessione con il server
-    // ret = connect_to_server(sd, server_addr, srv_port);
-    // if(ret < 0) { return -1; }
 
     // unisco le tre stringhe per inviare un solo messaggio
-    len = strlen(command) + strlen(username) + strlen(password) + 2; // il +2 serve per gli spazi
+    len = strlen(command) + strlen(username) + strlen(password) + 3;
     message = malloc(len);
     snprintf(message, len, "%s %s %s", command, username, password);
     
@@ -219,23 +211,22 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
     // Poi a seconda del comando inserito prendo i parametri e chiamo la funzione
     if(user->user_state != LOGGED) {
         if(!strncmp(command, "in", 2)) {
-            user->srv_port = atoi(strtok(NULL, " "));
             user->my_username = strtok(NULL, " ");
             user->my_password = strtok(NULL, " ");
 
-            // POI ANDRA' MODIFICATO TOGLIENDO SRV_PORT
-            if(user->srv_port == 0 || user->my_username == NULL || user->my_password == NULL) { return -1; }
+            if(user->my_username == NULL || user->my_password == NULL) { return -1; }
              
-            ret = in(command, user->srv_port, user->my_username, user->my_password, sd, server_addr);
+            ret = in(command, user->my_username, user->my_password, sd, server_addr);
             if(ret == 0) { user->user_state = LOGGED; }
 
         } else if(!strncmp(command, "signup", 6)) { 
             user->my_username = strtok(NULL, " ");
             user->my_password = strtok(NULL, " ");
 
+            // controllo che l'utente abbia inserito i dati
             if(user->my_username == NULL || user->my_password == NULL) { return -1; }
 
-            ret = signup(command, user->my_username, user->my_password, sd, server_addr);
+            ret = signup(command, user->my_username, user->my_password, user->my_port, sd, server_addr);
             if(ret == 0) { user->user_state = LOGGED; }
         
         } else { // in caso di comando non valido restituisco -1
