@@ -32,7 +32,10 @@ int serveDeviceRequest(int* sd, char* request) {
     command = strtok(request, " ");
 
     if(!strncmp(command, "in", 2)) {
-        in();
+        dev_username = strtok(NULL, " ");
+        dev_password = strtok(NULL, " ");
+
+        in(sd, dev_username, dev_password);
     } else if(!strncmp(command, "signup", 6)) {
 
         dev_username = strtok(NULL, " ");

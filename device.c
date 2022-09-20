@@ -99,6 +99,10 @@ int main(int argc, char *argv[]) {
     // pulisco il buffer dei comandi
     memset(&commands_buffer, '\0', BUFFER_SIZE);
 
+    // stabilisco la connessione con il server
+    ret = connect_to_server(&sd, &server_addr, SERVER_PORT);
+    if(ret < 0) { return -1; }
+
     // finchè l'utente non si connette non faccio partire l'iomultiplexing 
     // altrimenti ad fdmax verrebbe assegnato un valore non significativo
     while(user.user_state == DISCONNECT) {

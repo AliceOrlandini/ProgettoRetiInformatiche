@@ -30,8 +30,8 @@ int signup(char* command, char* username, char* password, int* sd, struct sockad
     char* message; 
 
     // stabilisco la connessione con il server
-    ret = connect_to_server(sd, server_addr, SERVER_PORT);
-    if(ret < 0) { return -1; }
+    // ret = connect_to_server(sd, server_addr, SERVER_PORT);
+    // if(ret < 0) { return -1; }
     
     // unisco le tre stringhe per inviare un solo messaggio
     len = strlen(command) + strlen(username) + strlen(password) + 2; // il +2 serve per gli spazi
@@ -66,8 +66,8 @@ int in(char* command, int srv_port, char* username, char* password, int* sd, str
     char* message; 
     
     // stabilisco la connessione con il server
-    ret = connect_to_server(sd, server_addr, srv_port);
-    if(ret < 0) { return -1; }
+    // ret = connect_to_server(sd, server_addr, srv_port);
+    // if(ret < 0) { return -1; }
 
     // unisco le tre stringhe per inviare un solo messaggio
     len = strlen(command) + strlen(username) + strlen(password) + 2; // il +2 serve per gli spazi
@@ -77,12 +77,22 @@ int in(char* command, int srv_port, char* username, char* password, int* sd, str
     // invio al server il messaggio
     ret = send_TCP(sd, message);
     if(ret < 0) { printf("Impossibile eseguire il login\n"); free(message); return -2; }
-    
-    // libero la memoria utilizzata per il messaggio
-    free(message);
 
-    printf("Login avvenuto con successo!\n");
-    return 0;
+    // aspetto che il server mi comunichi che il login è avvenuto con successo
+    ret = receive_TCP(sd, message); 
+    if(ret < 0) { printf("Impossibile eseguire il login\n"); free(message); return -2; }
+
+    if(!strncmp(message, "no", 2)) {
+        printf("Username o password non validi\n"); 
+        free(message); 
+        return -1;
+    } else if(!strncmp(message, "ok", 2)) {
+        printf("Login avvenuto con successo!\n"); 
+        free(message); 
+        return 0;
+    }
+    
+    return -2;
 }
 
 /*
