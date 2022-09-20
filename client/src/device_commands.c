@@ -220,13 +220,14 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
     // controllo che per i comandi in e signin l'utente sia disconnesso
     // per gli altri comandi l'utente deve essere connesso.
     // Poi a seconda del comando inserito prendo i parametri e chiamo la funzione
-    if(user->user_state != LOGGED) {
+    if(user->user_state == DISCONNECTED) {
         if(!strncmp(command, "in", 2)) {
             user->srv_port = strtok(NULL, " ");
             user->my_username = strtok(NULL, " ");
             user->my_password = strtok(NULL, " ");
 
-            if(user->my_username == NULL || user->my_password == NULL) { return -1; }
+            // controllo che l'utente abbia inserito i dati
+            if(user->srv_port == NULL || user->my_username == NULL || user->my_password == NULL) { return -1; }
              
             ret = in(command, user->my_username, user->my_password, user->srv_port, sd, server_addr);
             if(ret == 0) { user->user_state = LOGGED; }
@@ -246,22 +247,26 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
         }
     } else if(user->user_state == LOGGED) {
         if(!strncmp(command, "hanging", 7)) {
+            
             hanging(command, sd);
         } else if(!strncmp(command, "show", 4)) {
             user->dst_username = strtok(NULL, " ");
 
+            // controllo che l'utente abbia inserito i dati
             if(user->dst_username == NULL) { return -2; }
             
             show(command, sd, user->dst_username);
         } else if(!strncmp(command, "chat", 4)) {
             user->dst_username = strtok(NULL, " ");
 
+            // controllo che l'utente abbia inserito i dati
             if(user->dst_username == NULL) { return -2; }
             
             chat(command, sd, user->dst_username);
         } else if(!strncmp(command, "share", 5)) {
             file_name = strtok(NULL, " ");
 
+            // controllo che l'utente abbia inserito i dati
             if(file_name == NULL) { return -2; }
             
             share(command, sd, file_name);
