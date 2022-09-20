@@ -20,7 +20,7 @@ int init_server(int* sd, struct sockaddr_in* server_addr, in_port_t srv_port) {
     *sd = socket(AF_INET, SOCK_STREAM, 0);
     if(*sd < 0) { perror("Error0 init_server"); return -1; }
 
-    memset(server_addr, 0, sizeof(server_addr));
+    memset(server_addr, 0, sizeof(*server_addr));
     server_addr->sin_family = AF_INET;
     server_addr->sin_port = htons(srv_port);
     inet_pton(AF_INET, "127.0.0.1", &server_addr->sin_addr); 
@@ -46,7 +46,7 @@ int connect_to_server(int* sd, struct sockaddr_in* server_addr, in_port_t srv_po
     *sd = socket(AF_INET, SOCK_STREAM, 0);
     if(*sd < 0) { perror("Error0 connect_to_server"); return -1; }
     
-    memset(server_addr, 0, sizeof(server_addr));
+    memset(server_addr, 0, sizeof(*server_addr));
     server_addr->sin_family = AF_INET;
     server_addr->sin_port = htons(srv_port);
     inet_pton(AF_INET, "127.0.0.1", &server_addr->sin_addr); 

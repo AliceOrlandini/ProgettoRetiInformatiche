@@ -13,9 +13,9 @@
 void printCommands(struct User user) {
     printf("I comandi disponibili sono:\n");
     if(user.user_state != LOGGED) {
-        printf("1) in --> per accedere al servizio \n2) signup --> per creare un account\n");
+        printf("1) in --> per accedere al servizio.\n2) signup --> per creare un account.\n");
     } else if(user.user_state == LOGGED) {
-        printf("1) hanging --> per ricevere i messaggi mentre si era offline\n2) show --> per ricevere i messaggi pendenti dall'utente specificato\n3) chat --> per chattare con un altro utente\n4) share --> per condividere un file\n5) out --> per disconnettersi\n");
+        printf("1) hanging --> per ricevere i messaggi mentre si era offline.\n2) show --> per ricevere i messaggi pendenti dall'utente specificato.\n3) chat --> per chattare con un altro utente.\n4) share --> per condividere un file.\n5) out --> per disconnettersi.\n");
     }
 }
 
@@ -33,15 +33,19 @@ int signup(char* command, char* username, char* password, char* port, int* sd, s
     len = strlen(command) + strlen(username) + strlen(password) + strlen(port) + 4;
     message = malloc(len);
     snprintf(message, len, "%s %s %s %s", command, username, password, port);
+
+    // stabilisco la connessione con il server
+    ret = connect_to_server(sd, server_addr, SERVER_PORT);
+    if(ret < 0) { printf("Impossibile connettersi al server.\n"); return -1; }
     
     // invio al server il messaggio
     ret = send_TCP(sd, message);
-    if(ret < 0) { printf("Impossibile eseguire la registrazione\n"); free(message); return -1; }
+    if(ret < 0) { printf("Impossibile eseguire la registrazione.\n"); free(message); return -1; }
 
     // aspetto che il server mi comunichi che la registrazione è avvenuta con successo
     ret = receive_TCP(sd, message); 
     if(strncmp(message, "ok", 2)) {
-        printf("Impossibile eseguire la registrazione\n"); free(message); return -1;
+        printf("Impossibile eseguire la registrazione.\n"); free(message); return -1;
     }
 
     // libero la memoria utilizzata per il messaggio
@@ -55,7 +59,7 @@ int signup(char* command, char* username, char* password, char* port, int* sd, s
     Permette al device di richiedere al 
     server la connessione al servizio.
 */
-int in(char* command, char* username, char* password, int* sd, struct sockaddr_in* server_addr) {
+int in(char* command, char* username, char* password, char* srv_port, int* sd, struct sockaddr_in* server_addr) {
     
     int len;
     int ret;
@@ -65,26 +69,33 @@ int in(char* command, char* username, char* password, int* sd, struct sockaddr_i
     len = strlen(command) + strlen(username) + strlen(password) + 3;
     message = malloc(len);
     snprintf(message, len, "%s %s %s", command, username, password);
+
+    // stabilisco la connessione con il server
+    ret = connect_to_server(sd, server_addr, atoi(srv_port));
+    if(ret < 0) { printf("Impossibile connettersi al server.\n"); return -1; }
     
     // invio al server il messaggio
     ret = send_TCP(sd, message);
-    if(ret < 0) { printf("Impossibile eseguire il login 1\n"); free(message); return -2; }
+    if(ret < 0) { printf("Errore nell'invio del messaggio al server.\n"); free(message); return -1; }
 
     // aspetto che il server mi comunichi che il login è avvenuto con successo
     ret = receive_TCP(sd, message); 
-    if(ret < 0) { printf("Impossibile eseguire il login 2\n"); free(message); return -2; }
+    if(ret < 0) { printf("Errore nella ricezione del messaggio dal server.\n"); free(message); return -1; }
 
     if(!strncmp(message, "no", 2)) {
-        printf("Username o password non validi\n"); 
+        
+        // l'operazione non è andata a buon fine quindi mi disconnetto dal server
+        disconnect_to_server(sd); 
         free(message); 
-        return -1;
+        printf("Username o password non validi.\n");
+
     } else if(!strncmp(message, "ok", 2)) {
         printf("Login avvenuto con successo!\n"); 
         free(message); 
         return 0;
     }
     
-    return -2;
+    return -1;
 }
 
 /*
@@ -97,7 +108,7 @@ void hanging(char* command, int* sd) {
 
     // invio al server il messaggio
     ret = send_TCP(sd, command);
-    if(ret < 0) { printf("Impossibile eseguire hanging\n"); return; }
+    if(ret < 0) { printf("Impossibile eseguire hanging.\n"); return; }
 
     printf("Hanging avvenuta con successo!\n");
     return;
@@ -120,7 +131,7 @@ void show(char* command, int* sd, char* username) {
     
     // invio al server il messaggio
     ret = send_TCP(sd, message);
-    if(ret < 0) { printf("Impossibile eseguire la show\n"); free(message); return; }
+    if(ret < 0) { printf("Impossibile eseguire la show.\n"); free(message); return; }
     
     // libero la memoria utilizzata per il messaggio
     free(message);
@@ -145,7 +156,7 @@ void chat(char* command, int* sd, char* username) {
     
     // invio al server il messaggio
     ret = send_TCP(sd, message);
-    if(ret < 0) { printf("Impossibile iniziare la chat\n"); free(message); return; }
+    if(ret < 0) { printf("Impossibile iniziare la chat.\n"); free(message); return; }
     
     // libero la memoria utilizzata per il messaggio
     free(message);
@@ -171,7 +182,7 @@ void share(char* command, int* sd, char* file_name) {
     
     // invio al server il messaggio
     ret = send_TCP(sd, message);
-    if(ret < 0) { printf("Impossibile fare la share\n"); free(message); return; }
+    if(ret < 0) { printf("Impossibile fare la share.\n"); free(message); return; }
     
     // libero la memoria utilizzata per il messaggio
     free(message);
@@ -189,7 +200,7 @@ void out(int* sd) {
     
     // invio la richiesta di disconnessione
     ret = disconnect_to_server(sd);
-    if(ret == -1) { printf("Impossibile disconnettersi\n"); }
+    if(ret == -1) { printf("Impossibile disconnettersi.\n"); }
     printf("Disconnessione avvenuta con successo!\n");
 }
 
@@ -211,12 +222,13 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
     // Poi a seconda del comando inserito prendo i parametri e chiamo la funzione
     if(user->user_state != LOGGED) {
         if(!strncmp(command, "in", 2)) {
+            user->srv_port = strtok(NULL, " ");
             user->my_username = strtok(NULL, " ");
             user->my_password = strtok(NULL, " ");
 
             if(user->my_username == NULL || user->my_password == NULL) { return -1; }
              
-            ret = in(command, user->my_username, user->my_password, sd, server_addr);
+            ret = in(command, user->my_username, user->my_password, user->srv_port, sd, server_addr);
             if(ret == 0) { user->user_state = LOGGED; }
 
         } else if(!strncmp(command, "signup", 6)) { 

@@ -51,15 +51,13 @@ void ioMultiplexing(int* sd, char* commands_buffer) {
                     read(STANDARD_INPUT, (void*)commands_buffer, BUFFER_SIZE);
                     len = strlen(commands_buffer);
                     commands_buffer[len-1] = '\0'; // per togliere il \n
-
                     
                     // eseguo l'azione prevista dal comando
                     ret = executeDeviceCommand((char*)commands_buffer, &user, sd, NULL);
-                    if(ret == -1) { printf("Comando non valido, i comandi accettati sono in e signup\n"); }
-                    else if(ret == -2) { printf("Comando non valido, i comandi accettati sono hanging, show, chat, share e out\n"); }
+                    if(ret == -2) { printf("Comando non valido.\n"); }
                     
                     // se il comando era out allora tolgo il socket dal set dei monitorati
-                    else if(ret == 0 && !strncmp(commands_buffer, "out", 3)) {
+                    if(!strncmp(commands_buffer, "out", 3)) {
                         FD_CLR(*sd, &master);
                         
                         // faccio terminare l'io multiplexing e di conseguenza il device
@@ -81,28 +79,42 @@ int main(int argc, char *argv[]) {
     int sd;
     struct sockaddr_in server_addr;
     int ret;
+    int len;
     char commands_buffer[BUFFER_SIZE];
 
     // se l'utente non ha specificato la porta termino 
     if(argv[1] == NULL) {
-        printf("Error: porta device non specificata\n");
+        printf("Error: porta device non specificata.\n");
         return 0;
     } 
 
     // imposto i valori dell'utente
     user.user_state = DISCONNECTED;
-    user.my_port = argv[1];
+    user.my_port = argv[1]; // la lascio char* per comodità
 
     // pulisco il buffer dei comandi
     memset(&commands_buffer, '\0', BUFFER_SIZE);
 
-    // stabilisco la connessione con il server
-    ret = connect_to_server(&sd, &server_addr, SERVER_PORT);
-    if(ret < 0) { printf("Impossibile connettersi al server\n"); return 0; }
-    user.user_state = CONNECTED;
-
     // stampo i comandi disponibili
     printCommands(user);
+
+    // finchè l'utente non si connette non faccio partire l'iomultiplexing 
+    while(user.user_state == DISCONNECTED) {
+        // prelievo il comando dallo standard input e lo salvo nel buffer
+        read(STANDARD_INPUT, (void*)&commands_buffer, BUFFER_SIZE);
+        len = strlen(commands_buffer);
+        commands_buffer[len-1] = '\0'; // per togliere il \n
+        
+        // eseguo l'azione prevista dal comando
+        ret = executeDeviceCommand((char*)&commands_buffer, &user, &sd, &server_addr);
+        if(ret == -1) { printf("Comando non valido.\n"); }
+        
+        // pulisco il buffer dei comandi
+        memset(&commands_buffer, '\0', BUFFER_SIZE);
+
+        // stampo i comandi disponibili
+        printCommands(user);
+    }
 
     ioMultiplexing(&sd, (char*)&commands_buffer);
     
