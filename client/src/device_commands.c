@@ -12,7 +12,7 @@
 */
 void printCommands(struct User user) {
     printf("I comandi disponibili sono:\n");
-    if(user.user_state == DISCONNECT) {
+    if(user.user_state != LOGGED) {
         printf("1) in --> per accedere al servizio \n2) signup --> per creare un account\n");
     } else if(user.user_state == LOGGED) {
         printf("1) hanging --> per ricevere i messaggi mentre si era offline\n2) show --> per ricevere i messaggi pendenti dall'utente specificato\n3) chat --> per chattare con un altro utente\n4) share --> per condividere un file\n5) out --> per disconnettersi\n");
@@ -76,11 +76,11 @@ int in(char* command, int srv_port, char* username, char* password, int* sd, str
     
     // invio al server il messaggio
     ret = send_TCP(sd, message);
-    if(ret < 0) { printf("Impossibile eseguire il login\n"); free(message); return -2; }
+    if(ret < 0) { printf("Impossibile eseguire il login 1\n"); free(message); return -2; }
 
     // aspetto che il server mi comunichi che il login è avvenuto con successo
     ret = receive_TCP(sd, message); 
-    if(ret < 0) { printf("Impossibile eseguire il login\n"); free(message); return -2; }
+    if(ret < 0) { printf("Impossibile eseguire il login 2\n"); free(message); return -2; }
 
     if(!strncmp(message, "no", 2)) {
         printf("Username o password non validi\n"); 
@@ -217,12 +217,13 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
     // controllo che per i comandi in e signin l'utente sia disconnesso
     // per gli altri comandi l'utente deve essere connesso.
     // Poi a seconda del comando inserito prendo i parametri e chiamo la funzione
-    if(user->user_state == DISCONNECT) {
+    if(user->user_state != LOGGED) {
         if(!strncmp(command, "in", 2)) {
             user->srv_port = atoi(strtok(NULL, " "));
             user->my_username = strtok(NULL, " ");
             user->my_password = strtok(NULL, " ");
 
+            // POI ANDRA' MODIFICATO TOGLIENDO SRV_PORT
             if(user->srv_port == 0 || user->my_username == NULL || user->my_password == NULL) { return -1; }
              
             ret = in(command, user->srv_port, user->my_username, user->my_password, sd, server_addr);
@@ -264,7 +265,7 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
         } else if(!strncmp(command, "out", 3)) {
             out(sd);
             
-            user->user_state = DISCONNECT;
+            user->user_state = DISCONNECTED;
         } else { // in caso di comando non valido restituisco -2
             return -2;
         }

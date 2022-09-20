@@ -50,9 +50,7 @@ int serveDeviceRequest(int* sd, char* request) {
         chat();
     } else if(!strncmp(command, "share", 5)) {
         share();
-    } else {
-        return -1;
-    }
+    } else { return -1; }
     return 0;
 }
 

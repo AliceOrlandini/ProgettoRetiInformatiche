@@ -1,3 +1,1 @@
-a p
-a o
-ali pass
+alice pass PORT 11:34:30 NULL

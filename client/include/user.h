@@ -1,6 +1,6 @@
 #include <arpa/inet.h>
 
-enum User_State { DISCONNECT, LOGGED };
+enum User_State { DISCONNECTED, CONNECTED, LOGGED };
 struct User {
     enum User_State user_state;
     char* my_username;
