@@ -8,8 +8,10 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "./server/server_consts.h"
-#include "./server/server_commands.h"
+#include "./server/include/server_consts.h"
+#include "./server/include/server_commands.h"
+#include "./server/include/device_requests.h"
+#include "./network/include/network.h"
 
 /*#include <sys/select.h>
 #include <stdlib.h>
@@ -17,38 +19,45 @@
 #include <stdbool.h>*/
 
 /*
-    gestione della richiesta del device, a seconda
+    Gestione della richiesta del device, a seconda
     del comando ricevuto si invoca la funzione corrispondente
 */
-int serveDeviceRequest(char* request) {
+int serveDeviceRequest(int* sd, char* request) {
 
     char* command = NULL;
+    char* dev_username;
+    char* dev_password;
+    char* dev_port;
     
     // prendo il comando inserito 
     command = strtok(request, " ");
 
     if(!strncmp(command, "in", 2)) {
-        printf("IN\n");
+        dev_username = strtok(NULL, " ");
+        dev_password = strtok(NULL, " ");
+
+        in(sd, dev_username, dev_password);
     } else if(!strncmp(command, "signup", 6)) {
-        printf("SIGNUP\n");
+
+        dev_username = strtok(NULL, " ");
+        dev_password = strtok(NULL, " ");
+        dev_port = strtok(NULL, " ");
+        
+        signup(sd, dev_username, dev_password, dev_port);
     } else if(!strncmp(command, "hanging", 7)) {
-        
+        hanging();
     } else if(!strncmp(command, "show", 4)) {
-        
+        show();
     } else if(!strncmp(command, "chat", 4)) {
-        
+        chat();
     } else if(!strncmp(command, "share", 5)) {
-        
-    } else if(!strncmp(command, "out", 3)) {
-        
-    } else {
-        return -1;
-    }
+        share();
+    } else { return -1; }
     return 0;
 }
 
 /* 
-    gestione dei descrittori pronti 
+    Gestione dei descrittori pronti 
     tramite l'io multiplexing 
 */
 void ioMultiplexing(int listener) {
@@ -62,8 +71,6 @@ void ioMultiplexing(int listener) {
     int fdmax;
     int i;
     int ret;
-    int len;
-    uint16_t lmsg;
     char buffer[BUFFER_SIZE];
 
     FD_ZERO(&master);
@@ -79,6 +86,7 @@ void ioMultiplexing(int listener) {
         for(i = 0; i <= fdmax; i++) {
             if(FD_ISSET(i, &read_fds)) {
                 if(i == listener) {
+                    // accetto la nuova richiesta di connessione
                     new_sd = accept(listener, (struct sockaddr*)&client_addr, (socklen_t*)&addrlen);
                     if(new_sd < 0) { perror("Error0 accept"); }
                     else {
@@ -86,41 +94,51 @@ void ioMultiplexing(int listener) {
                         FD_SET(new_sd, &master);
                         if(new_sd > fdmax) { fdmax = new_sd; }
                     }
-                } else if(i == STANDARD_INPUT){
+                } else if(i == STANDARD_INPUT) {
                     // prelievo il comando dallo standard input e lo salvo nel buffer
                     read(STANDARD_INPUT, (void*)&buffer, SERVER_COMMAND_SIZE);
+                    
                     // eseguo l'azione prevista dal comando
-                    executeServerCommand((char*)&buffer);
-                } else { // Il socket connesso è pronto
+                    executeServerCommand((char*)&buffer, &listener);
+                } else { 
                     pid = fork();
                     if(pid < 0) { perror("Error1 fork"); }
                     else if(pid == 0) { // sono nel processo figlio
                         close(listener);
-                        
-                        // inizializzo il buffer per ricevere messaggi
-                        memset(&buffer, '\0', sizeof(buffer));
-                        
-                        // ricevo la quantità di dati
-                        ret = recv(i, (void*)&lmsg, sizeof(uint16_t), 0);
-                        if(ret < 0) { perror("Error2 receive_TCP len"); }
-                        // riconverto la dimensione in formato host
-                        len = ntohs(lmsg);
-                        
-                        // ricevo i dati
-                        ret = recv(i, (void*)&buffer, len, 0);
-                        if(ret < 0) { perror("Error3 receive_TCP data"); }
-                        printf("Richiesta ricevuta da un client %s\n", buffer);
 
-                        // a seconda del tipo di richiesta eseguo la funzione corrispondente
-                        ret = serveDeviceRequest(buffer);
-                        if(ret < 0) { printf("Richiesta non valida\n"); }
+                        while(1) {
+                            // inizializzo il buffer per ricevere la lunghezza
+                            memset(&buffer, '\0', sizeof(buffer));
+
+                            ret = receive_TCP(&i, buffer);
+
+                            // se ricevo -2 dalla receive significa
+                            // che il client si è disconnesso
+                            if(ret == -2) { out(); break; }
+
+                            // se ricevo -2 dalla receive significa che
+                            // la comunicazione ha avuto qualche problema
+                            if(ret == -1) { continue; }
+
+                            printf("Richiesta ricevuta da un client %s\n", buffer);
+
+                            // a seconda del tipo di richiesta eseguo la funzione corrispondente
+                            ret = serveDeviceRequest(&i, buffer);
+                            if(ret < 0) { printf("Richiesta non valida\n"); }
+                        }
                         
-                        // close(new_sd);
+                        printf("Il client si è disconnesso\n"); 
+                            
+                        // chiudo il socket di comunicazione
+                        close(new_sd);
+                        // lo tolgo dal set di monitorati
+                        FD_CLR(new_sd, &master);
+                        // termino il processo figlio
                         exit(0);
                     } else { // sono nel processo padre
-                        // chiudo il socket connesso
+                        // chiudo il socket di comunicazione
                         close(i);
-                        // tolgo il descrittore del socket connesso dal set dei monitorati
+                        // tolgo il descrittore del socket di comunicazione dal set dei monitorati
                         FD_CLR(i, &master);
                     }  
                 }
@@ -132,26 +150,22 @@ void ioMultiplexing(int listener) {
 int main(int argc, char *argv[]) {
 
     int listener;
+    in_port_t srv_port;
     struct sockaddr_in server_addr;
     int ret;
 
+    srv_port = (argv[1] == NULL)? SERVER_PORT:atoi(argv[1]);
+
     printf("***** SERVER STARTED *****\n");
+    
+    // inizializzo il server
+    ret = init_server(&listener, &server_addr, srv_port);
+    if(ret < 0) { exit(0); }
+
+    // mostro i comandi disponibili 
     printCommands();
-    
-    listener = socket(AF_INET, SOCK_STREAM, 0);
-    if(listener < 0) { perror("Error0 socket"); exit(0); }
-    
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(4242);
-    inet_pton(AF_INET, LOCALHOST, &server_addr.sin_addr);
 
-    ret = bind(listener, (struct sockaddr*)&server_addr, sizeof(server_addr));
-    if(ret < 0) { perror("Error1 bind"); exit(0); }
-    
-    ret = listen(listener, BACKLOG);
-    if(ret < 0) { perror("Error2 listen"); exit(0); }
-
+    // faccio partire l'io multiplexing
     ioMultiplexing(listener);
     
     return  0;
