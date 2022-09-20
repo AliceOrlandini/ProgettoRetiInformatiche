@@ -129,3 +129,10 @@ void share() {
 void chat() {
 
 }
+
+/*
+
+*/
+void out() {
+
+}

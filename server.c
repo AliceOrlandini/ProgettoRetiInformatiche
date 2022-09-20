@@ -114,7 +114,7 @@ void ioMultiplexing(int listener) {
 
                             // se ricevo -2 dalla receive significa
                             // che il client si è disconnesso
-                            if(ret == -2) { break; }
+                            if(ret == -2) { out(); break; }
 
                             // se ricevo -2 dalla receive significa che
                             // la comunicazione ha avuto qualche problema

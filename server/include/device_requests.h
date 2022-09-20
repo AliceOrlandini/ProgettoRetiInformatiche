@@ -4,3 +4,4 @@ void hanging();
 void show();
 void share();
 void chat();
+void out();
