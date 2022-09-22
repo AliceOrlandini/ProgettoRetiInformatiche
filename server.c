@@ -28,6 +28,8 @@ int serveDeviceRequest(int* sd, char* request, char** username) {
     char* dev_password;
     char* dev_port;
     int len;
+
+    printf("Richiesta ricevuta da un client %s\n", request);
     
     // prendo il comando inserito 
     command = strtok(request, " ");
@@ -42,8 +44,6 @@ int serveDeviceRequest(int* sd, char* request, char** username) {
         len = strlen(dev_username);
         *username = malloc(len + 1);
         strncpy(*username, dev_username, len);
-        username[len] = '\0';
-        *username = dev_username; 
         
         return 1;
     } else if(!strncmp(command, "signup", 6)) {
@@ -58,8 +58,6 @@ int serveDeviceRequest(int* sd, char* request, char** username) {
         len = strlen(dev_username);
         *username = malloc(len + 1);
         strncpy(*username, dev_username, len);
-        username[len] = '\0';
-        *username = dev_username; 
 
         return 1;
     } else if(!strncmp(command, "hanging", 7)) {
@@ -200,19 +198,18 @@ void ioMultiplexing(int listener) {
                             // la comunicazione ha avuto qualche problema
                             else if(ret == -1) { continue; }
 
-                            printf("Richiesta ricevuta da un client %s\n", buffer);
-
                             // a seconda del tipo di richiesta eseguo la funzione corrispondente
                             ret = serveDeviceRequest(&i, buffer, &username);
-                            if(ret < 0) { printf("Richiesta non valida\n"); }
+                            if(ret < 0) { printf("Richiesta non valida\n"); continue; }
+                            username[strlen(username) - 1] = '\0';
                         }
-                        
-                        printf("Il client si è disconnesso\n"); 
                             
                         // chiudo il socket di comunicazione
                         close(new_sd);
                         // lo tolgo dal set di monitorati
                         FD_CLR(new_sd, &master);
+                        // libero la memoria allocata per l'username
+                        free(username);
                         // termino il processo figlio
                         exit(0);
                     } else { // sono nel processo padre
