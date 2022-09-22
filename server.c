@@ -27,6 +27,7 @@ int serveDeviceRequest(int* sd, char* request, char** username) {
     char* dev_username;
     char* dev_password;
     char* dev_port;
+    int len;
     
     // prendo il comando inserito 
     command = strtok(request, " ");
@@ -37,8 +38,11 @@ int serveDeviceRequest(int* sd, char* request, char** username) {
 
         in(sd, dev_username, dev_password);
 
-        // mi salvo l'username per poi inserirlo
-        // nella lista degli utenti online
+        // mi salvo l'username dell'utente
+        len = strlen(dev_username);
+        *username = malloc(len + 1);
+        strncpy(*username, dev_username, len);
+        username[len] = '\0';
         *username = dev_username; 
         
         return 1;
@@ -49,6 +53,13 @@ int serveDeviceRequest(int* sd, char* request, char** username) {
         dev_port = strtok(NULL, " ");
         
         signup(sd, dev_username, dev_password, dev_port);
+
+        // mi salvo l'username dell'utente
+        len = strlen(dev_username);
+        *username = malloc(len + 1);
+        strncpy(*username, dev_username, len);
+        username[len] = '\0';
+        *username = dev_username; 
 
         return 1;
     } else if(!strncmp(command, "hanging", 7)) {
@@ -63,16 +74,11 @@ int serveDeviceRequest(int* sd, char* request, char** username) {
     return 0;
 }
 
-struct onlineUser {
+/*struct onlineUser {
     char* username;
     int sd; // socket di comunicazione associato a questo user
     struct onlineUser* next_user; // per creare la lista degli user online
 };
-
-/*
-    Funzione di utilità che permette di aggiungere un 
-    utente in testa alla lista degli utenti online.
-*/
 void addUserToList(struct onlineUser** online_users_list, struct onlineUser** new_user, int new_sd, char* username) {
     
     // creo il nuovo utente
@@ -123,7 +129,7 @@ void printList(struct onlineUser** online_users_list) {
     }
     printf("FINE\n");
     return;
-}
+}*/
 
 /* 
     Gestione dei descrittori pronti 
@@ -143,10 +149,6 @@ void ioMultiplexing(int listener) {
     
     int ret;
     char buffer[BUFFER_SIZE];
-
-    char* username = NULL;
-    struct onlineUser* new_user;
-    struct onlineUser* online_users_list = NULL;
 
     FD_ZERO(&master);
     FD_ZERO(&read_fds);
@@ -182,6 +184,8 @@ void ioMultiplexing(int listener) {
                     else if(pid == 0) { // sono nel processo figlio
                         close(listener);
 
+                        char* username = NULL;
+
                         while(1) {
                             // inizializzo il buffer per ricevere la lunghezza
                             memset(&buffer, '\0', sizeof(buffer));
@@ -190,24 +194,17 @@ void ioMultiplexing(int listener) {
 
                             // se ricevo -2 dalla receive significa
                             // che il client si è disconnesso
-                            if(ret == -2) { out(); /*delList(&online_users_list);*/ break; }
+                            if(ret == -2) { out(username); break; }
 
                             // se ricevo -1 dalla receive significa che
                             // la comunicazione ha avuto qualche problema
-                            if(ret == -1) { continue; }
+                            else if(ret == -1) { continue; }
 
                             printf("Richiesta ricevuta da un client %s\n", buffer);
 
                             // a seconda del tipo di richiesta eseguo la funzione corrispondente
                             ret = serveDeviceRequest(&i, buffer, &username);
                             if(ret < 0) { printf("Richiesta non valida\n"); }
-                            else if(ret == 1) {
-                                // inserisco l'utente nella lista di quelli online
-                                addUserToList(&online_users_list, &new_user, i, username);
-                                // printList(&online_users_list);
-                                printf("USER: %s\n", online_users_list->username);
-
-                            }
                         }
                         
                         printf("Il client si è disconnesso\n"); 

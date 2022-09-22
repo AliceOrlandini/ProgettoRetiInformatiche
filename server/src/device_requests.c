@@ -56,23 +56,28 @@ void in(int* sd, char* dev_username, char* dev_password) {
             fseek(fp, position, SEEK_SET);
             fprintf(fp, "%s %s %s %s NULL", username, password, port, timestamp_login);
 
+            fclose(fp);
+
             // comunico all'utente che il login è stato effettuato
             ret = send_TCP(sd, "ok");
-            if(ret < 0) { printf("Error2 in\n"); fclose(fp); return; }
+            if(ret < 0) { printf("Error2 in\n"); return; }
+
+            printf("Un nuovo utente ha effettuato il login!\n");
+            return;
         }
     }
 
     fclose(fp);
 
-    // comunico all'utente che il suo username o password non sono validi
+    // comunico all'utente che l'username o password non sono validi
     ret = send_TCP(sd, "no");
-    if(ret < 0) { printf("Error1 in\n"); }
+    if(ret < 0) { printf("Error1 in\n"); } 
 
     return;
 }
 
 /*
-    Permette a un utente di registrarsi un una mail e una password
+    Permette a un utente di registrarsi un username e una password.
 */
 void signup(int* sd, char* dev_username, char* dev_password, char* dev_port) {
     
@@ -133,6 +138,6 @@ void chat() {
 /*
 
 */
-void out() {
+void out(char* username) {
 
 }
