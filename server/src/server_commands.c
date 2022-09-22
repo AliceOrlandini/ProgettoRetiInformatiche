@@ -48,7 +48,7 @@ void executeServerCommand(char* buffer, int* sd) {
 
     // controllo che il comando sia valido 
     if(strcmp("help", server_command) && strcmp("list", server_command) && strcmp("esc", server_command)) {
-        printf("\nComando non valido, ecco i ");
+        printf("\nComando non valido.");
         // mostro di nuovo i comandi disponibili
         printCommands();
         return;

@@ -38,12 +38,12 @@ int serveDeviceRequest(int* sd, char* request, char** username) {
         dev_username = strtok(NULL, " ");
         dev_password = strtok(NULL, " ");
 
-        in(sd, dev_username, dev_password);
-
         // mi salvo l'username dell'utente
         len = strlen(dev_username);
         *username = malloc(len + 1);
         strncpy(*username, dev_username, len);
+
+        in(sd, dev_username, dev_password);
         
         return 1;
     } else if(!strncmp(command, "signup", 6)) {
@@ -51,13 +51,13 @@ int serveDeviceRequest(int* sd, char* request, char** username) {
         dev_username = strtok(NULL, " ");
         dev_password = strtok(NULL, " ");
         dev_port = strtok(NULL, " ");
-        
-        signup(sd, dev_username, dev_password, dev_port);
 
         // mi salvo l'username dell'utente
         len = strlen(dev_username);
         *username = malloc(len + 1);
         strncpy(*username, dev_username, len);
+        
+        signup(sd, dev_username, dev_password, dev_port);
 
         return 1;
     } else if(!strncmp(command, "hanging", 7)) {
@@ -131,7 +131,7 @@ void printList(struct onlineUser** online_users_list) {
 
 /* 
     Gestione dei descrittori pronti 
-    tramite l'io multiplexing 
+    tramite l'io multiplexing.
 */
 void ioMultiplexing(int listener) {
     
@@ -201,9 +201,9 @@ void ioMultiplexing(int listener) {
                             // a seconda del tipo di richiesta eseguo la funzione corrispondente
                             ret = serveDeviceRequest(&i, buffer, &username);
                             if(ret < 0) { printf("Richiesta non valida\n"); continue; }
-                            username[strlen(username) - 1] = '\0';
+                            username[strlen(username)] = '\0';
                         }
-                            
+                        
                         // chiudo il socket di comunicazione
                         close(new_sd);
                         // lo tolgo dal set di monitorati

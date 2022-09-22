@@ -158,7 +158,7 @@ void out(char* dev_username) {
 
     // scorro tutto il file finchè non trovo l'username
     while (fgets(file_line, sizeof(file_line), fp) != NULL) {
-        
+
         last_len = strlen(file_line);
         position += last_len;
 
