@@ -14,7 +14,6 @@
 #include "./network/include/network.h"
 
 /*#include <sys/select.h>
-#include <stdlib.h>
 #include <time.h>
 #include <stdbool.h>*/
 
@@ -22,7 +21,7 @@
     Gestione della richiesta del device, a seconda
     del comando ricevuto si invoca la funzione corrispondente
 */
-int serveDeviceRequest(int* sd, char* request) {
+int serveDeviceRequest(int* sd, char* request, char** username) {
 
     char* command = NULL;
     char* dev_username;
@@ -37,6 +36,12 @@ int serveDeviceRequest(int* sd, char* request) {
         dev_password = strtok(NULL, " ");
 
         in(sd, dev_username, dev_password);
+
+        // mi salvo l'username per poi inserirlo
+        // nella lista degli utenti online
+        *username = dev_username; 
+        
+        return 1;
     } else if(!strncmp(command, "signup", 6)) {
 
         dev_username = strtok(NULL, " ");
@@ -44,6 +49,8 @@ int serveDeviceRequest(int* sd, char* request) {
         dev_port = strtok(NULL, " ");
         
         signup(sd, dev_username, dev_password, dev_port);
+
+        return 1;
     } else if(!strncmp(command, "hanging", 7)) {
         hanging();
     } else if(!strncmp(command, "show", 4)) {
@@ -56,6 +63,68 @@ int serveDeviceRequest(int* sd, char* request) {
     return 0;
 }
 
+struct onlineUser {
+    char* username;
+    int sd; // socket di comunicazione associato a questo user
+    struct onlineUser* next_user; // per creare la lista degli user online
+};
+
+/*
+    Funzione di utilità che permette di aggiungere un 
+    utente in testa alla lista degli utenti online.
+*/
+void addUserToList(struct onlineUser** online_users_list, struct onlineUser** new_user, int new_sd, char* username) {
+    
+    // creo il nuovo utente
+    int len = strlen(username);
+    // struct onlineUser* new_user;
+    *new_user = malloc(sizeof(struct onlineUser));
+
+    // inizializzo i dati del nuovo utente
+    (*new_user)->username = malloc(len + 1);
+    strncpy((*new_user)->username, username, len);
+    (*new_user)->username[len] = '\0';
+    (*new_user)->sd = new_sd;
+
+    // aggiungo il nuovo utente in testa alla lista
+    (*new_user)->next_user = *online_users_list;
+    *online_users_list = *new_user;
+
+    return;
+}
+
+void delUserFromList(struct onlineUser** online_users_list) {
+
+    // free(new_user->username);
+    // free(new_user);
+}
+
+void delList(struct onlineUser** online_users_list) {
+    
+    struct onlineUser *del_user;
+    while(*online_users_list != NULL) {
+        del_user = (*online_users_list)->next_user;
+        free((*online_users_list)->username);
+        free(*online_users_list);
+        *online_users_list = del_user;
+    }
+}
+
+void printList(struct onlineUser** online_users_list) {
+    
+    if(online_users_list == NULL) {
+        return;
+    }
+
+    struct onlineUser* user = *online_users_list;
+    while(user != NULL) {
+        printf("USER: %s\n", user->username);
+        user = user->next_user;
+    }
+    printf("FINE\n");
+    return;
+}
+
 /* 
     Gestione dei descrittori pronti 
     tramite l'io multiplexing 
@@ -65,13 +134,19 @@ void ioMultiplexing(int listener) {
     int new_sd;
     struct sockaddr_in client_addr;
     int addrlen = sizeof(struct sockaddr_in);
+    
     pid_t pid;
     fd_set master;
     fd_set read_fds;
     int fdmax;
     int i;
+    
     int ret;
     char buffer[BUFFER_SIZE];
+
+    char* username = NULL;
+    struct onlineUser* new_user;
+    struct onlineUser* online_users_list = NULL;
 
     FD_ZERO(&master);
     FD_ZERO(&read_fds);
@@ -92,7 +167,7 @@ void ioMultiplexing(int listener) {
                     else {
                         printf("Stabilita una connessione!\n");
                         FD_SET(new_sd, &master);
-                        if(new_sd > fdmax) { fdmax = new_sd; }
+                        if(new_sd > fdmax) { fdmax = new_sd; } 
                     }
                 } else if(i == STANDARD_INPUT) {
                     // prelievo il comando dallo standard input e lo salvo nel buffer
@@ -101,6 +176,7 @@ void ioMultiplexing(int listener) {
                     // eseguo l'azione prevista dal comando
                     executeServerCommand((char*)&buffer, &listener);
                 } else { 
+
                     pid = fork();
                     if(pid < 0) { perror("Error1 fork"); }
                     else if(pid == 0) { // sono nel processo figlio
@@ -114,17 +190,24 @@ void ioMultiplexing(int listener) {
 
                             // se ricevo -2 dalla receive significa
                             // che il client si è disconnesso
-                            if(ret == -2) { out(); break; }
+                            if(ret == -2) { out(); /*delList(&online_users_list);*/ break; }
 
-                            // se ricevo -2 dalla receive significa che
+                            // se ricevo -1 dalla receive significa che
                             // la comunicazione ha avuto qualche problema
                             if(ret == -1) { continue; }
 
                             printf("Richiesta ricevuta da un client %s\n", buffer);
 
                             // a seconda del tipo di richiesta eseguo la funzione corrispondente
-                            ret = serveDeviceRequest(&i, buffer);
+                            ret = serveDeviceRequest(&i, buffer, &username);
                             if(ret < 0) { printf("Richiesta non valida\n"); }
+                            else if(ret == 1) {
+                                // inserisco l'utente nella lista di quelli online
+                                addUserToList(&online_users_list, &new_user, i, username);
+                                // printList(&online_users_list);
+                                printf("USER: %s\n", online_users_list->username);
+
+                            }
                         }
                         
                         printf("Il client si è disconnesso\n"); 
@@ -140,7 +223,7 @@ void ioMultiplexing(int listener) {
                         close(i);
                         // tolgo il descrittore del socket di comunicazione dal set dei monitorati
                         FD_CLR(i, &master);
-                    }  
+                    }
                 }
             }
         }
