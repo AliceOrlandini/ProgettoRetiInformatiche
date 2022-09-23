@@ -88,9 +88,12 @@ int main(int argc, char *argv[]) {
         return 0;
     } 
 
-    // imposto i valori dell'utente
+    // imposto lo stato e la porta dell'utente
     user.user_state = DISCONNECTED;
-    user.my_port = argv[1]; // la lascio char* per comodità
+    len = strlen(argv[1]);
+    user.my_port = malloc(len + 1);
+    strncpy(user.my_port, argv[1], len);
+    user.my_port[len] = '\0'; 
 
     // pulisco il buffer dei comandi
     memset(&commands_buffer, '\0', BUFFER_SIZE);
