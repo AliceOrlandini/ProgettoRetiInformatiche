@@ -3,6 +3,6 @@ void signup(int*, char*, char*, char*);
 void hanging();
 void show();
 void share();
-void chat();
+void chat(int*, char*);
 void out(char*);
 int serveDeviceRequest(int*, char*, char**);

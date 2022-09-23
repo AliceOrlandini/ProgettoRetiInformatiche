@@ -142,13 +142,13 @@ void show(char* command, int* sd, char* username) {
 }
 
 /*
-    Avvia una chat con l'utente username.
+    Avvia una chat con l'utente dst_username.
 */
 void chat(char* command, int* sd, char* my_username, char* dst_username) {
     
     int len;
     int ret;
-    char* message; 
+    char message[1024]; 
     FILE* fp;
     char* file_path;
     char file_line[20];
@@ -187,19 +187,28 @@ void chat(char* command, int* sd, char* my_username, char* dst_username) {
         return;
     }
 
-    // unisco le tre stringhe per inviare un solo messaggio
+    // unisco le tre stringhe per inviare al server un solo messaggio
+    memset(&message, '\0', sizeof(message));
     len = strlen(command) + strlen(dst_username) + 2; // il +2 serve per gli spazi
-    message = malloc(len);
     snprintf(message, len, "%s %s", command, dst_username);
     
     // invio al server il messaggio
     ret = send_TCP(sd, message);
-    if(ret < 0) { printf("Impossibile iniziare la chat.\n"); free(message); return; }
-    
-    // libero la memoria utilizzata per il messaggio
-    free(message);
+    if(ret < 0) { printf("Impossibile iniziare la chat.\n"); return; }
 
-    printf("Chat iniziata con successo!\n");
+    // pulisco il buffer per ricevere la risposta
+    memset(&message, '\0', sizeof(message));
+
+    // aspetto la risposta dal server
+    ret = receive_TCP(sd, message);
+    if(ret < 0) { printf("Errore durante la ricezione della risposta dal server\n"); return; }
+
+    if(!strncmp(message, "offline", 7)) { // caso in cui il destinatario è offline
+        printf("Il destinatario è offline.\n");
+        return;
+    }
+
+    printf("Chat iniziata con successo! La porta del destinatario è: %s\n", message);
     return;
 }
 

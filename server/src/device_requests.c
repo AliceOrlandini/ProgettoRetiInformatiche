@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <stdbool.h>
 
 #include "./../include/device_requests.h"
 #include "./../include/server_consts.h"
@@ -62,7 +63,7 @@ void in(int* sd, char* dev_username, char* dev_password) {
             ret = send_TCP(sd, "ok");
             if(ret < 0) { printf("Error2 in\n"); return; }
 
-            printf("Un nuovo utente ha effettuato il login!\n");
+            printf("%s ha effettuato il login!\n", dev_username);
             return;
         }
     }
@@ -105,6 +106,8 @@ void signup(int* sd, char* dev_username, char* dev_password, char* dev_port) {
 
     // chiudo il file
     fclose(fp);
+
+    printf("%s si è registrato!\n", dev_username);
 }
 
 /*
@@ -129,10 +132,59 @@ void share() {
 }
 
 /*
-    Permette 
+    Permette ad un utente di iniziare una chat con dst_username.
+    Se questo non dovesse essere online i messaggi verranno bufferizzati.
 */
-void chat() {
+void chat(int* sd, char* dst_username) {
+    
+    int ret;
+    FILE* fp;
+    char file_line[64];
+    int username_len;
+    char* username;
+    char* password;
+    char* port;
+    char* timestamp_login;
+    char* timestamp_logout;
+    bool status = false; // true: online; false: offline;
 
+    // controllo se il destinatario è online o meno
+    fp = fopen("./server/files/db_users.txt", "r"); 
+    if(fp == NULL) { printf("Error0 chat\n"); return; }
+
+    // verifico che il device sia effettivamente registrato
+    while (fgets(file_line, sizeof(file_line), fp) != NULL) {
+        
+        // ricavo i dati del destinatario
+        username = strtok(file_line, " ");
+        password = strtok(NULL, " ");
+        port = strtok(NULL, " ");
+        timestamp_login = strtok(NULL, " ");
+        timestamp_logout = strtok(NULL, " ");
+
+        username_len = (strlen(username) > strlen(dst_username))? strlen(username):strlen(dst_username);
+        
+        // controllo se il timestamp del logout è NULL
+        if(!strncmp(timestamp_logout, "NULL", 4) && !strncmp(dst_username, username, username_len)) {
+            status = true;
+            break;
+        }
+    }
+
+    fclose(fp);
+
+    if(status) {
+        printf("ONLINE\n");
+        // nel caso in cui il destinatario sia online 
+        // restituisco al client la porta del destinatario 
+        ret = send_TCP(sd, port);
+    } else {
+        printf("OFFLINE\n");
+        // nel caso in cui il destinatario sia offline 
+        // restituisco al client l'avviso che il messaggio
+        // è stato bufferizzato
+        ret = send_TCP(sd, "offline");
+    }
 }
 
 /*
@@ -184,7 +236,7 @@ void out(char* dev_username) {
 
             fclose(fp);
 
-            printf("Un utente ha effettuato il logout!\n");
+            printf("%s ha effettuato il logout!\n", dev_username);
             return;
         }
     }
@@ -240,7 +292,9 @@ int serveDeviceRequest(int* sd, char* request, char** username) {
     } else if(!strncmp(command, "show", 4)) {
         show();
     } else if(!strncmp(command, "chat", 4)) {
-        chat();
+        dev_username = strtok(NULL, " ");
+        
+        chat(sd, dev_username);
     } else if(!strncmp(command, "share", 5)) {
         share();
     } else { return -1; }
