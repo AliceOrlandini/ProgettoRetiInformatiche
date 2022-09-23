@@ -191,3 +191,58 @@ void out(char* dev_username) {
 
     return;
 }
+
+/*
+    Gestione della richiesta del device, a seconda
+    del comando ricevuto si invoca la funzione corrispondente.
+*/
+int serveDeviceRequest(int* sd, char* request, char** username) {
+
+    char* command = NULL;
+    char* dev_username;
+    char* dev_password;
+    char* dev_port;
+    int len;
+
+    printf("Richiesta ricevuta da un client %s\n", request);
+    
+    // prendo il comando inserito 
+    command = strtok(request, " ");
+
+    if(!strncmp(command, "in", 2)) {
+        dev_username = strtok(NULL, " ");
+        dev_password = strtok(NULL, " ");
+
+        // salvo l'username dell'utente
+        len = strlen(dev_username);
+        *username = malloc(len + 1);
+        strncpy(*username, dev_username, len);
+
+        in(sd, dev_username, dev_password);
+        
+        return 1;
+    } else if(!strncmp(command, "signup", 6)) {
+
+        dev_username = strtok(NULL, " ");
+        dev_password = strtok(NULL, " ");
+        dev_port = strtok(NULL, " ");
+
+        // salvo l'username dell'utente
+        len = strlen(dev_username);
+        *username = malloc(len + 1);
+        strncpy(*username, dev_username, len);
+        
+        signup(sd, dev_username, dev_password, dev_port);
+
+        return 1;
+    } else if(!strncmp(command, "hanging", 7)) {
+        hanging();
+    } else if(!strncmp(command, "show", 4)) {
+        show();
+    } else if(!strncmp(command, "chat", 4)) {
+        chat();
+    } else if(!strncmp(command, "share", 5)) {
+        share();
+    } else { return -1; }
+    return 0;
+}

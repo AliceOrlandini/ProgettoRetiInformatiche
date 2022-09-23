@@ -13,122 +13,6 @@
 #include "./server/include/device_requests.h"
 #include "./network/include/network.h"
 
-/*#include <sys/select.h>
-#include <time.h>
-#include <stdbool.h>*/
-
-/*
-    Gestione della richiesta del device, a seconda
-    del comando ricevuto si invoca la funzione corrispondente
-*/
-int serveDeviceRequest(int* sd, char* request, char** username) {
-
-    char* command = NULL;
-    char* dev_username;
-    char* dev_password;
-    char* dev_port;
-    int len;
-
-    printf("Richiesta ricevuta da un client %s\n", request);
-    
-    // prendo il comando inserito 
-    command = strtok(request, " ");
-
-    if(!strncmp(command, "in", 2)) {
-        dev_username = strtok(NULL, " ");
-        dev_password = strtok(NULL, " ");
-
-        // mi salvo l'username dell'utente
-        len = strlen(dev_username);
-        *username = malloc(len + 1);
-        strncpy(*username, dev_username, len);
-
-        in(sd, dev_username, dev_password);
-        
-        return 1;
-    } else if(!strncmp(command, "signup", 6)) {
-
-        dev_username = strtok(NULL, " ");
-        dev_password = strtok(NULL, " ");
-        dev_port = strtok(NULL, " ");
-
-        // mi salvo l'username dell'utente
-        len = strlen(dev_username);
-        *username = malloc(len + 1);
-        strncpy(*username, dev_username, len);
-        
-        signup(sd, dev_username, dev_password, dev_port);
-
-        return 1;
-    } else if(!strncmp(command, "hanging", 7)) {
-        hanging();
-    } else if(!strncmp(command, "show", 4)) {
-        show();
-    } else if(!strncmp(command, "chat", 4)) {
-        chat();
-    } else if(!strncmp(command, "share", 5)) {
-        share();
-    } else { return -1; }
-    return 0;
-}
-
-/*struct onlineUser {
-    char* username;
-    int sd; // socket di comunicazione associato a questo user
-    struct onlineUser* next_user; // per creare la lista degli user online
-};
-void addUserToList(struct onlineUser** online_users_list, struct onlineUser** new_user, int new_sd, char* username) {
-    
-    // creo il nuovo utente
-    int len = strlen(username);
-    // struct onlineUser* new_user;
-    *new_user = malloc(sizeof(struct onlineUser));
-
-    // inizializzo i dati del nuovo utente
-    (*new_user)->username = malloc(len + 1);
-    strncpy((*new_user)->username, username, len);
-    (*new_user)->username[len] = '\0';
-    (*new_user)->sd = new_sd;
-
-    // aggiungo il nuovo utente in testa alla lista
-    (*new_user)->next_user = *online_users_list;
-    *online_users_list = *new_user;
-
-    return;
-}
-
-void delUserFromList(struct onlineUser** online_users_list) {
-
-    // free(new_user->username);
-    // free(new_user);
-}
-
-void delList(struct onlineUser** online_users_list) {
-    
-    struct onlineUser *del_user;
-    while(*online_users_list != NULL) {
-        del_user = (*online_users_list)->next_user;
-        free((*online_users_list)->username);
-        free(*online_users_list);
-        *online_users_list = del_user;
-    }
-}
-
-void printList(struct onlineUser** online_users_list) {
-    
-    if(online_users_list == NULL) {
-        return;
-    }
-
-    struct onlineUser* user = *online_users_list;
-    while(user != NULL) {
-        printf("USER: %s\n", user->username);
-        user = user->next_user;
-    }
-    printf("FINE\n");
-    return;
-}*/
-
 /* 
     Gestione dei descrittori pronti 
     tramite l'io multiplexing.
@@ -185,20 +69,21 @@ void ioMultiplexing(int listener) {
                         char* username = NULL;
 
                         while(1) {
-                            // inizializzo il buffer per ricevere la lunghezza
+                            // inizializzo il buffer 
                             memset(&buffer, '\0', sizeof(buffer));
-
+                            
+                            // ricevo la richiesta dal client
                             ret = receive_TCP(&i, buffer);
 
-                            // se ricevo -2 dalla receive significa
-                            // che il client si è disconnesso
+                            // se ricevo -2 significa che
+                            // il client si è disconnesso
                             if(ret == -2) { out(username); break; }
 
                             // se ricevo -1 dalla receive significa che
                             // la comunicazione ha avuto qualche problema
                             else if(ret == -1) { continue; }
 
-                            // a seconda del tipo di richiesta eseguo la funzione corrispondente
+                            // servo la richiesta del client
                             ret = serveDeviceRequest(&i, buffer, &username);
                             if(ret < 0) { printf("Richiesta non valida\n"); continue; }
                             username[strlen(username)] = '\0';

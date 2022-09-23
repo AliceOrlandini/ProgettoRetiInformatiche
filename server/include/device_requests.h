@@ -5,3 +5,4 @@ void show();
 void share();
 void chat();
 void out(char*);
+int serveDeviceRequest(int*, char*, char**);
