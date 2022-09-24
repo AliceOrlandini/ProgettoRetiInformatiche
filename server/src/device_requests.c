@@ -175,8 +175,9 @@ void chat(int* sd, char* dst_username) {
 
     if(status) {
         printf("ONLINE\n");
-        // nel caso in cui il destinatario sia online 
-        // restituisco al client la porta del destinatario 
+        // nel caso in cui il destinatario sia online restituisco 
+        // al client la porta del destinatario in modo che questo 
+        // possa instaurare una comunicazione p2p
         ret = send_TCP(sd, port);
     } else {
         printf("OFFLINE\n");

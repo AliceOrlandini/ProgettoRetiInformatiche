@@ -36,7 +36,7 @@ int signup(char* command, struct User* user, int* sd, struct sockaddr_in* server
     snprintf(message, len, "%s %s %s %s", command, user->my_username, user->my_password, user->srv_port);
 
     // stabilisco la connessione con il server
-    ret = connect_to_server(sd, server_addr, SERVER_PORT);
+    ret = connect_to(sd, server_addr, SERVER_PORT);
     if(ret < 0) { printf("Impossibile connettersi al server.\n"); return -1; }
     
     // invio al server il messaggio
@@ -72,7 +72,7 @@ int in(char* command, struct User* user, int* sd, struct sockaddr_in* server_add
     snprintf(message, len, "%s %s %s", command, user->my_username, user->my_password);
 
     // stabilisco la connessione con il server
-    ret = connect_to_server(sd, server_addr, atoi(user->srv_port));
+    ret = connect_to(sd, server_addr, atoi(user->srv_port));
     if(ret < 0) { printf("Impossibile connettersi al server.\n"); return -1; }
     
     // invio al server il messaggio
@@ -86,7 +86,7 @@ int in(char* command, struct User* user, int* sd, struct sockaddr_in* server_add
     if(!strncmp(message, "no", 2)) {
         
         // l'operazione non è andata a buon fine quindi mi disconnetto dal server
-        disconnect_to_server(sd); 
+        disconnect_to(sd); 
         free(message); 
         printf("Username o password non validi.\n");
 
@@ -144,7 +144,7 @@ void show(char* command, int* sd, char* username) {
 /*
     Avvia una chat con l'utente dst_username.
 */
-void chat(char* command, int* sd, char* my_username, char* dst_username) {
+int chat(char* command, int* sd, char* my_username, char* dst_username) {
     
     int len;
     int ret;
@@ -165,7 +165,7 @@ void chat(char* command, int* sd, char* my_username, char* dst_username) {
 
     // apro la rubrica
     fp = fopen(file_path, "r");
-    if(fp == NULL) { printf("Error0 chat\n"); return; }
+    if(fp == NULL) { printf("Error0 chat\n"); return -1; }
 
     // verifico che il destinatario sia presente in rubrica
     while (fgets(file_line, sizeof(file_line), fp) != NULL) {
@@ -182,10 +182,7 @@ void chat(char* command, int* sd, char* my_username, char* dst_username) {
 
     fclose(fp);
     
-    if(!found) {
-        printf("Il contatto indicato non è in rubrica.\n");
-        return;
-    }
+    if(!found) { printf("Il contatto indicato non è in rubrica.\n"); return -1; }
 
     // unisco le tre stringhe per inviare al server un solo messaggio
     memset(&message, '\0', sizeof(message));
@@ -194,22 +191,24 @@ void chat(char* command, int* sd, char* my_username, char* dst_username) {
     
     // invio al server il messaggio
     ret = send_TCP(sd, message);
-    if(ret < 0) { printf("Impossibile iniziare la chat.\n"); return; }
+    if(ret < 0) { printf("Impossibile iniziare la chat.\n"); return -1; }
 
     // pulisco il buffer per ricevere la risposta
     memset(&message, '\0', sizeof(message));
 
     // aspetto la risposta dal server
     ret = receive_TCP(sd, message);
-    if(ret < 0) { printf("Errore durante la ricezione della risposta dal server\n"); return; }
+    if(ret < 0) { printf("Errore durante la ricezione della risposta dal server\n"); return -1; }
 
     if(!strncmp(message, "offline", 7)) { // caso in cui il destinatario è offline
         printf("Il destinatario è offline.\n");
-        return;
+        return -1;
     }
 
-    printf("Chat iniziata con successo! La porta del destinatario è: %s\n", message);
-    return;
+    printf("Chat iniziata con successo! La porta del destinatario è: %d\n", atoi(message));
+    
+    // ritorno la porta del destinatario
+    return atoi(message);
 }
 
 /*
@@ -246,7 +245,7 @@ void out(int* sd, struct User* user) {
     int ret;
     
     // invio la richiesta di disconnessione
-    ret = disconnect_to_server(sd);
+    ret = disconnect_to(sd);
     if(ret == -1) { printf("Impossibile disconnettersi.\n"); }
     printf("Disconnessione avvenuta con successo!\n");
 
@@ -355,7 +354,9 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
             // controllo che l'utente abbia inserito i dati
             if(user->dst_username == NULL) { return -2; }
             
-            chat(command, sd, user->my_username, user->dst_username);
+            ret = chat(command, sd, user->my_username, user->dst_username);
+            // se l'utente era online ritorno la sua porta
+            if(ret > 0) { return ret; }
         } else if(!strncmp(command, "share", 5)) {
             file_name = strtok(NULL, " ");
 
@@ -367,6 +368,7 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
             out(sd, user);
             
             user->user_state = DISCONNECTED;
+            return -3;
         } else { // in caso di comando non valido restituisco -2
             return -2;
         }

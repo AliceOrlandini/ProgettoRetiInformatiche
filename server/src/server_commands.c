@@ -34,7 +34,7 @@ void esc(int* sd) {
     
     int ret; 
     
-    ret = disconnect_to_server(sd);
+    ret = disconnect_to(sd);
     if(ret == 0) { printf("Server disconnesso con successo!\n"); }
 }
 

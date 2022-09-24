@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
     printf("***** SERVER STARTED *****\n");
     
     // inizializzo il server
-    ret = init_server(&listener, &server_addr, srv_port);
+    ret = init_listener(&listener, &server_addr, srv_port);
     if(ret < 0) { exit(0); }
 
     // mostro i comandi disponibili 
