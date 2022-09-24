@@ -32,8 +32,6 @@ void ioMultiplexing(int listener) {
     int ret;
     char buffer[BUFFER_SIZE];
 
-    int fd[2];
-
     FD_ZERO(&master);
     FD_ZERO(&read_fds);
 
@@ -46,10 +44,7 @@ void ioMultiplexing(int listener) {
         select(fdmax + 1, &read_fds, NULL, NULL, NULL);
         for(i = 0; i <= fdmax; i++) {
             if(FD_ISSET(i, &read_fds)) {
-                if(i == listener) {
-                    // userò la pipe per scambiare messaggi tra il processo padre e i figli
-                    if(pipe(fd) != 0) { perror("Error pipe"); return; }
-                    
+                if(i == listener) { 
                     // accetto la nuova richiesta di connessione
                     new_sd = accept(listener, (struct sockaddr*)&client_addr, (socklen_t*)&addrlen);
                     if(new_sd < 0) { perror("Error0 accept"); }
@@ -73,9 +68,6 @@ void ioMultiplexing(int listener) {
                         close(listener);
 
                         char* username = NULL;
-                        
-                        // non devo leggere dalla pipe
-                        close(fd[0]);
 
                         while(1) {
                             // inizializzo il buffer 
@@ -95,12 +87,7 @@ void ioMultiplexing(int listener) {
                             // servo la richiesta del client
                             ret = serveDeviceRequest(&i, buffer, &username);
                             if(ret < 0) { printf("Richiesta non valida\n"); continue; }
-                            username[strlen(username)] = '\0';
-                            
-                            // mando al padre l'username dell'utente che si è loggato
-                            ssize_t written = write(fd[1], username, strlen(username));
-                            close(fd[1]);
-                            if (written != strlen(username)) { perror("Error pipe\n"); return; }
+                            username[strlen(username)] = '\0';  
                         }
                         
                         // chiudo il socket di comunicazione
@@ -112,24 +99,8 @@ void ioMultiplexing(int listener) {
                         // termino il processo figlio
                         exit(0);
                     } else { // sono nel processo padre
-                        
-                        // pulisco il buffer
-                        memset(&buffer, '\0', BUFFER_SIZE);
-                        
-                        // non devo scrivere nella pipe
-                        close(fd[1]); 
-                        
-                        // leggo il contenuto della pipe
-                        ssize_t nread;
-                        while((nread = read(fd[0], buffer, BUFFER_SIZE - 1)) > 0) {
-                            printf("PIPE: %s\n", buffer);
-                        }
-                        close(fd[0]);
-                        if (nread < 0) { perror("Error pipe\n"); }
-                        
                         // chiudo il socket di comunicazione
                         close(i);
-                        
                         // tolgo il descrittore del socket di comunicazione dal set dei monitorati
                         FD_CLR(i, &master);
                     }
