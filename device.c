@@ -21,11 +21,10 @@ struct User user;
     Gestione dei descrittori pronti 
     tramite l'io multiplexing 
 */
-void ioMultiplexing(int listener, int* sd, char* commands_buffer) {
+void ioMultiplexing(int listener, int* sd, char* buffer) {
     
-    int new_sd;
-    struct sockaddr_in src_addr;
     int p2p_sd;
+    struct sockaddr_in src_addr;
     struct sockaddr_in dst_addr;
     int addrlen = sizeof(struct sockaddr_in);
     int ret;
@@ -34,10 +33,7 @@ void ioMultiplexing(int listener, int* sd, char* commands_buffer) {
     fd_set read_fds;
     int fdmax;
     int i;
-
-    char message_buffer[BUFFER_SIZE];
-
-    memset(&message_buffer, '\0', BUFFER_SIZE);
+    char* message;
 
     FD_ZERO(&master);
     FD_ZERO(&read_fds);
@@ -57,26 +53,26 @@ void ioMultiplexing(int listener, int* sd, char* commands_buffer) {
                     
                     // accetto la nuova richiesta di connessione da
                     // un device per stabilire una comunicazione p2p
-                    new_sd = accept(listener, (struct sockaddr*)&src_addr, (socklen_t*)&addrlen);
-                    if(new_sd < 0) { perror("Error0 accept"); }
+                    p2p_sd = accept(listener, (struct sockaddr*)&src_addr, (socklen_t*)&addrlen);
+                    if(p2p_sd < 0) { perror("Error0 accept"); }
                     else {
                         printf("Stabilita una connessione con un device!\n");
-                        FD_SET(new_sd, &master);
-                        if(new_sd > fdmax) { fdmax = new_sd; } 
+                        FD_SET(p2p_sd, &master);
+                        if(p2p_sd > fdmax) { fdmax = p2p_sd; } 
                     }
                     // cambio lo stato dell'utente
                     user.user_state = CHATTING;
                 }
-                else if(i == STANDARD_INPUT){
+                else if(i == STANDARD_INPUT) {
                     
                     // prelievo il comando dallo standard input e lo salvo nel buffer
-                    read(STANDARD_INPUT, (void*)commands_buffer, BUFFER_SIZE);
-                    len = strlen(commands_buffer);
-                    commands_buffer[len - 1] = '\0';
+                    read(STANDARD_INPUT, (void*)buffer, BUFFER_SIZE);
+                    len = strlen(buffer);
+                    buffer[len - 1] = '\0';
                     
                     if(user.user_state != CHATTING) {
                         // eseguo l'azione prevista dal comando
-                        ret = executeDeviceCommand((char*)commands_buffer, &user, sd, NULL);
+                        ret = executeDeviceCommand((char*)buffer, &user, sd, NULL);
                         if(ret == -2) { printf("Comando non valido.\n"); }
                         // se il comando era out allora tolgo il socket dal set dei monitorati
                         else if(ret == -3) {
@@ -91,23 +87,47 @@ void ioMultiplexing(int listener, int* sd, char* commands_buffer) {
                         else if(ret > 0) {
                             // creo una nuova connessione con il destinatario
                             ret = connect_to(&p2p_sd, &dst_addr, ret);
+                            FD_SET(p2p_sd, &master);
+                            if(p2p_sd > fdmax) { fdmax = p2p_sd; } 
                             user.user_state = CHATTING;
-                            // pulisco il buffer dei comandi
-                            memset(commands_buffer, '\0', BUFFER_SIZE);
+                            
+                            // pulisco il buffer
+                            memset(buffer, '\0', BUFFER_SIZE);
                             continue;
                         }
-                        // pulisco il buffer dei comandi
-                        memset(commands_buffer, '\0', BUFFER_SIZE);
+                        // pulisco il buffer
+                        memset(buffer, '\0', BUFFER_SIZE);
 
                         // stampo il menu dei comandi disponibili
                         printCommands(user);
                     } else {
-                        ret = send_TCP(&p2p_sd, (char*)commands_buffer);
-                    }
-                    
+                        // controllo se l'utente ha richiesto di terminare la chat
+                        if(!strncmp(buffer, "\\q", 2)) {
+                            printf("FINE CHAT\n");
+                            user.user_state = LOGGED;
+                            disconnect_to(&p2p_sd);
+                            FD_CLR(p2p_sd, &master);
+                            continue;
+                        }
+                        
+                        // aggiungo l'username al messaggio 
+                        len = strlen(buffer) + strlen(user.my_username) + 3;
+                        message = malloc(len);
+                        snprintf(message, len, "%s: %s", user.my_username, buffer);
+                        
+                        // invio il messaggio
+                        ret = send_TCP(&p2p_sd, (char*)message);
+                        if(ret < 0) { continue; }
+                        
+                        // pulisco il buffer
+                        memset(buffer, '\0', BUFFER_SIZE);
+                        // distruggo il messaggio 
+                        free(message);
+                    }  
                 } else {
-                    
-                    ret = receive_TCP(&i, (char*)commands_buffer);
+                    // pulisco il buffer
+                    memset(buffer, '\0', BUFFER_SIZE);
+                    ret = receive_TCP(&i, (char*)buffer);
                     
                     // in questo caso ho ricevuto 0 byte quindi chiudo il socket di
                     // comunicazione con il device e riporto lo stato utente a LOGGED
@@ -116,11 +136,13 @@ void ioMultiplexing(int listener, int* sd, char* commands_buffer) {
                         FD_CLR(i, &master); 
                         printf("Il device ha chiuso la comunicazione.\n"); 
                         user.user_state = LOGGED;
-                        // pulisco il buffer dei comandi
-                        memset(commands_buffer, '\0', BUFFER_SIZE);
+                        // pulisco il buffer
+                        memset(buffer, '\0', BUFFER_SIZE);
                         continue;
                     }
-                    printf("Messaggio dal device: %s\n", commands_buffer);
+                    printf("%s\n", buffer);
+                    // pulisco il buffer
+                    memset(buffer, '\0', BUFFER_SIZE);
                 }
             }
         }
@@ -135,7 +157,7 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in my_addr;
     int ret;
     int len;
-    char commands_buffer[BUFFER_SIZE];
+    char buffer[BUFFER_SIZE];
 
     // se l'utente non ha specificato la porta termino 
     if(argv[1] == NULL) {
@@ -155,7 +177,7 @@ int main(int argc, char *argv[]) {
     if(ret < 0) { exit(0); }
 
     // pulisco il buffer dei comandi
-    memset(&commands_buffer, '\0', BUFFER_SIZE);
+    memset(&buffer, '\0', BUFFER_SIZE);
 
     // stampo i comandi disponibili
     printCommands(user);
@@ -163,22 +185,22 @@ int main(int argc, char *argv[]) {
     // finchè l'utente non si connette non faccio partire l'iomultiplexing 
     while(user.user_state == DISCONNECTED) {
         // prelievo il comando dallo standard input e lo salvo nel buffer
-        read(STANDARD_INPUT, (void*)&commands_buffer, BUFFER_SIZE);
-        len = strlen(commands_buffer);
-        commands_buffer[len-1] = '\0'; // per togliere il \n
+        read(STANDARD_INPUT, (void*)&buffer, BUFFER_SIZE);
+        len = strlen(buffer);
+        buffer[len-1] = '\0'; // per togliere il \n
         
         // eseguo l'azione prevista dal comando
-        ret = executeDeviceCommand((char*)&commands_buffer, &user, &sd, &server_addr);
+        ret = executeDeviceCommand((char*)&buffer, &user, &sd, &server_addr);
         if(ret == -1) { printf("Comando non valido.\n"); }
         
         // pulisco il buffer dei comandi
-        memset(&commands_buffer, '\0', BUFFER_SIZE);
+        memset(&buffer, '\0', BUFFER_SIZE);
 
         // stampo i comandi disponibili
         printCommands(user);
     }
 
-    ioMultiplexing(listener, &sd, (char*)&commands_buffer);
+    ioMultiplexing(listener, &sd, (char*)&buffer);
     
     return 0;
 }
