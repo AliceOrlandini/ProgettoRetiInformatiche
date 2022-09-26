@@ -86,7 +86,7 @@ void ioMultiplexing(int listener) {
                             else if(ret == -1) { continue; }
 
                             // servo la richiesta del client
-                            ret = serveDeviceRequest(&i, buffer, &username);
+                            ret = serveDeviceRequest(&i, buffer, &username, &pending_message_list);
                             if(ret < 0) { printf("Richiesta non valida\n"); continue; }
                             else if(ret == 1) { 
                                 username[strlen(username)] = '\0'; 

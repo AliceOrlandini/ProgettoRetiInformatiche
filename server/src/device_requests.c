@@ -114,8 +114,73 @@ void signup(int* sd, char* dev_username, char* dev_password, char* dev_port) {
     Scorre la lista dei messaggi pendenti e per ogni utente conta il 
     numero di messaggi pendenti inviati e il timestamp del più recente.
 */
-void hanging(int* sd, char* dev_username) {
+void hanging(int* sd, struct pendingMessage** pending_message_list) {
+    
+    char* username[32]; // ipotizzo un massimo di 32 utenti
+    int num_messages[32];
+    char* timestamp[32];
+    int num_users = 0;
+    int len;
+    int i;
+    char* message;
+    int ret;
 
+    if(pending_message_list == NULL) {
+        return;
+    }
+
+    // inizializzo i vettori
+    for(i = 0; i < 32; i++) {
+        username[i] = NULL;
+        num_messages[i] = 0;
+        timestamp[i] = NULL;
+    }
+
+    struct pendingMessage* elem = *pending_message_list;
+    while(elem != NULL) {
+        for(i = 0; i < 32; i++) {
+            // se l'username in lista è NULL allora mi salvo il nuovo utente
+            if(username[i] == NULL) {
+                username[i] = elem->username_src;
+                num_messages[i]++;
+                timestamp[i] = elem->timestamp;
+                num_users++;
+                break;
+            } 
+
+            len = (strlen(username[i]) > strlen(elem->username_src))? strlen(username[i]):strlen(elem->username_src);
+            if(!strncmp(username[i], elem->username_src, len)) {
+                num_messages[i]++;
+                break;
+                // timestamp[i] = elem->timestamp; inserimento in testa
+            }
+        }
+        elem = elem->next;
+    }
+
+    // invio al client il numero di utenti che gli hanno inviato messaggi
+    message = malloc(3);
+    sprintf(message, "%d", num_users);
+    ret = send_TCP(sd, message);
+    if(ret < 0) { printf("Impossibile eseguire hanging.\n"); return; }
+    free(message);
+    
+    // invio al client tutte le righe
+    for(int i = 0; i < num_users; i++) {
+        
+        // creo il messaggio da inviare al client
+        len = strlen(username[i]) + strlen(timestamp[i]) + 5;
+        message = malloc(len);
+        snprintf(message, len, "%s %d %s", username[i], num_messages[i], timestamp[i]);
+        
+        // invio il messaggio
+        ret = send_TCP(sd, message);
+        if(ret < 0) { printf("Impossibile eseguire hanging.\n"); return; }
+        
+        // libero la memoria allocata per il messaggio
+        free(message);
+    }
+    return;
 }
 
 /*
@@ -278,7 +343,7 @@ void saveMessage(char* message) {
     Gestione della richiesta del device, a seconda
     del comando ricevuto si invoca la funzione corrispondente.
 */
-int serveDeviceRequest(int* sd, char* request, char** username) {
+int serveDeviceRequest(int* sd, char* request, char** username, struct pendingMessage** pending_message_list) {
 
     char* command = NULL;
     char* dev_username;
@@ -318,7 +383,7 @@ int serveDeviceRequest(int* sd, char* request, char** username) {
 
         return 1;
     } else if(!strncmp(command, "hanging", 7)) {
-        hanging(sd, *username);
+        hanging(sd, pending_message_list);
     } else if(!strncmp(command, "show", 4)) {
         show();
     } else if(!strncmp(command, "chat", 4)) {

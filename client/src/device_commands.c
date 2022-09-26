@@ -16,7 +16,7 @@ void printCommands(struct User user) {
     if(user.user_state != LOGGED) {
         printf("1) in     --> per accedere al servizio.\n2) signup --> per creare un account.\n");
     } else if(user.user_state == LOGGED) {
-        printf("1) hanging --> per ricevere i messaggi mentre si era offline.\n2) show    --> per ricevere i messaggi pendenti dall'utente specificato.\n3) chat    --> per chattare con un altro utente.\n4) share   --> per condividere un file.\n5) out     --> per disconnettersi.\n");
+        printf("1) hanging --> stampa il numero di messaggi ricevuti mentre si era offline.\n2) show    --> per ricevere i messaggi pendenti dall'utente specificato.\n3) chat    --> per chattare con un altro utente.\n4) share   --> per condividere un file.\n5) out     --> per disconnettersi.\n");
     }
 }
 
@@ -108,12 +108,39 @@ int in(char* command, struct User* user, int* sd, struct sockaddr_in* server_add
 void hanging(char* command, int* sd) {
     
     int ret;
+    char buffer[BUFFER_SIZE];
+    int num_users;
+    int i;
 
     // invio al server il comando
     ret = send_TCP(sd, command);
     if(ret < 0) { printf("Impossibile eseguire hanging.\n"); return; }
 
-    printf("Hanging avvenuta con successo!\n");
+    memset(&buffer, '\0', BUFFER_SIZE);
+
+    // ricevo dal server il numero di utenti che hanno inviato messaggi
+    ret = receive_TCP(sd, buffer);
+    if(ret < 0) { printf("Impossibile eseguire hanging.\n"); return; }
+    num_users = atoi(buffer);
+    if(num_users == 0) {
+        printf("\nNessuno ha inviato messaggi.\n");
+        return;
+    }
+
+    printf("\nGli utenti che hanno mandato messaggi sono:\n");
+
+    // ricevo dal server tutte le info sui messaggi inviati
+    for(i = 0; i < num_users; i++) {
+        
+        memset(&buffer, '\0', BUFFER_SIZE);
+        
+        ret = receive_TCP(sd, buffer);
+        if(ret < 0) { printf("Hanging: errore nella ricezione di una riga.\n"); continue; }
+        
+        // stampo le info
+        printf("%d. %s\n", i + 1, buffer);
+    }
+
     return;
 }
 
