@@ -1,0 +1,2 @@
+19:00:02 user1 user2 Ciao!
+19:00:08 user1 user2 Come stai?

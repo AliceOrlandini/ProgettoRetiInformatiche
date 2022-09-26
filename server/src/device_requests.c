@@ -111,9 +111,10 @@ void signup(int* sd, char* dev_username, char* dev_password, char* dev_port) {
 }
 
 /*
-    Permette 
+    Scorre la lista dei messaggi pendenti e per ogni utente conta il 
+    numero di messaggi pendenti inviati e il timestamp del più recente.
 */
-void hanging() {
+void hanging(int* sd, char* dev_username) {
 
 }
 
@@ -245,6 +246,10 @@ void out(char* dev_username) {
     return;
 }
 
+/*
+    Funzione per salvare un messaggio sul file db_messages 
+    che contiene tutti i messaggi pendenti.
+*/
 void saveMessage(char* message) {
 
     FILE* fp;
@@ -268,6 +273,7 @@ void saveMessage(char* message) {
 
     return; 
 }
+
 /*
     Gestione della richiesta del device, a seconda
     del comando ricevuto si invoca la funzione corrispondente.
@@ -312,7 +318,7 @@ int serveDeviceRequest(int* sd, char* request, char** username) {
 
         return 1;
     } else if(!strncmp(command, "hanging", 7)) {
-        hanging();
+        hanging(sd, *username);
     } else if(!strncmp(command, "show", 4)) {
         show();
     } else if(!strncmp(command, "chat", 4)) {

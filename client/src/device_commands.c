@@ -102,12 +102,14 @@ int in(char* command, struct User* user, int* sd, struct sockaddr_in* server_add
 /*
     Permette all'utente di ricevere la lista degli utenti 
     chi gli hanno inviato messaggi mentre era offline.
+    Per ogni utente il comando mostra username, il numero di
+    messaggi pendenti in ingresso e il timestamp del più recente.
 */
 void hanging(char* command, int* sd) {
     
     int ret;
 
-    // invio al server il messaggio
+    // invio al server il comando
     ret = send_TCP(sd, command);
     if(ret < 0) { printf("Impossibile eseguire hanging.\n"); return; }
 

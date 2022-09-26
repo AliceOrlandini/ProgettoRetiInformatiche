@@ -68,6 +68,7 @@ void ioMultiplexing(int listener) {
                         close(listener);
 
                         char* username = NULL;
+                        struct pendingMessage* pending_message_list = NULL;
 
                         while(1) {
                             // inizializzo il buffer 
@@ -75,10 +76,10 @@ void ioMultiplexing(int listener) {
                             
                             // ricevo la richiesta dal client
                             ret = receive_TCP(&i, buffer);
-                            if(ret < 0) { out(username); break; }
+                            if(ret < 0) { out(username); delPMList(&pending_message_list); break; }
 
                             // se ricevo -2 significa che il client si è disconnesso
-                            if(ret == -2) { out(username); break; }
+                            if(ret == -2) { out(username); delPMList(&pending_message_list); break; }
 
                             // se ricevo -1 dalla receive significa che
                             // la comunicazione ha avuto qualche problema
@@ -87,8 +88,11 @@ void ioMultiplexing(int listener) {
                             // servo la richiesta del client
                             ret = serveDeviceRequest(&i, buffer, &username);
                             if(ret < 0) { printf("Richiesta non valida\n"); continue; }
-                            else if(ret == 1) { username[strlen(username)] = '\0'; }  
-                            else if(ret == 2) { // in questo caso salvo i messaggi che arriano dal client
+                            else if(ret == 1) { 
+                                username[strlen(username)] = '\0'; 
+                                // creo la lista dei messaggi pendenti
+                                createPMList(&pending_message_list, username);
+                            } else if(ret == 2) { // in questo caso salvo i messaggi che arriano dal client
                                 while(1) {
                                     // inizializzo il buffer 
                                     memset(&buffer, '\0', BUFFER_SIZE);

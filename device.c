@@ -65,8 +65,7 @@ void ioMultiplexing(int listener, int* sd, char* buffer) {
                     // stampa di estetica
                     printf("> ");
                     fflush(stdout);
-                }
-                else if(i == STANDARD_INPUT) {
+                } else if(i == STANDARD_INPUT) {
                     
                     // prelievo il comando dallo standard input e lo salvo nel buffer
                     read(STANDARD_INPUT, (void*)buffer, BUFFER_SIZE);
