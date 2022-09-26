@@ -189,7 +189,7 @@ int chat(char* command, int* sd, char* my_username, char* dst_username) {
     file_path = malloc(len);
     strncpy(file_path, "./client/contacts/", 18);
     strncat(file_path, my_username, len);
-    strncat(file_path, ".txt", 4);
+    strcat(file_path, ".txt");
     file_path[len - 1] = '\0';
 
     // apro la rubrica
