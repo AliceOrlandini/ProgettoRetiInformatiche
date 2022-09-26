@@ -183,7 +183,7 @@ void chat(int* sd, char* dst_username) {
         printf("OFFLINE\n");
         // nel caso in cui il destinatario sia offline 
         // restituisco al client l'avviso che il messaggio
-        // è stato bufferizzato
+        // è stato salvato
         ret = send_TCP(sd, "offline");
     }
 }
@@ -245,6 +245,29 @@ void out(char* dev_username) {
     return;
 }
 
+void saveMessage(char* message) {
+
+    FILE* fp;
+    int ret;
+    time_t t;
+    char timestamp[TIMESTAMP_SIZE];
+
+    fp = fopen("./server/files/db_messages.txt", "a");
+    if(fp == NULL) { printf("Error0 saveMessage\n"); return; }
+
+    // calcolo il timestamp del login
+    t = time(NULL);
+    strftime(timestamp, sizeof(timestamp), "%H:%M:%S", localtime(&t));
+
+    // inserisco il nuovo record che sarà: 
+    // timestamp username_src username_dst message
+    ret = fprintf(fp, "%s %s\n", timestamp, message);
+    if(ret < 0) { printf("Error1 saveMessage\n"); return; }
+
+    fclose(fp);
+
+    return; 
+}
 /*
     Gestione della richiesta del device, a seconda
     del comando ricevuto si invoca la funzione corrispondente.

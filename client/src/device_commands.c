@@ -263,8 +263,12 @@ void out(int* sd, struct User* user) {
 int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockaddr_in* server_addr) {
 
     int ret;
+    int len;
     char* command = NULL;
     char* file_name = NULL;
+    char* temp_username;
+    char* temp_port;
+    char* temp_password;
     
     // prendo il comando inserito 
     command = strtok(buffer, " ");
@@ -273,41 +277,45 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
     // per gli altri comandi l'utente deve essere connesso.
     // Poi a seconda del comando inserito prendo i parametri e chiamo la funzione
     if(user->user_state == DISCONNECTED) {
-        char* temp_username;
-        char* temp_port;
-        char* temp_password;
-        int len;
         
         if(!strncmp(command, "in", 2)) {
             
-            // salvo in memoria la porta del server
             temp_port = strtok(NULL, " ");
+            temp_username = strtok(NULL, " ");
+            temp_password = strtok(NULL, " ");
+
+            // controllo che l'utente abbia inserito i dati
+            if(temp_port == NULL || temp_username == NULL || temp_password == NULL) { return -1; }
+
+            // salvo in memoria la porta del server
             len = strlen(temp_port);
             user->srv_port = malloc(len + 1);
             strncpy(user->srv_port, temp_port, len);
             user->srv_port[len] = '\0';
             
             // salvo in memoria l'username dell'utente
-            temp_username = strtok(NULL, " ");
             len = strlen(temp_username);
             user->my_username = malloc(len + 1);
             strncpy(user->my_username, temp_username, len);
             user->my_username[len] = '\0';
             
             // salvo in memoria la password dell'utente
-            temp_password = strtok(NULL, " ");
             len = strlen(temp_password);
             user->my_password = malloc(len + 1);
             strncpy(user->my_password, temp_password, len);
             user->my_password[len] = '\0';
-
-            // controllo che l'utente abbia inserito i dati
-            if(user->srv_port == NULL || user->my_username == NULL || user->my_password == NULL) { return -1; }
              
             ret = in(command, user, sd, server_addr);
             if(ret == 0) { user->user_state = LOGGED; }
 
         } else if(!strncmp(command, "signup", 6)) { 
+            
+            temp_username = strtok(NULL, " ");
+            temp_password = strtok(NULL, " ");
+            
+            // controllo che l'utente abbia inserito i dati
+            if(temp_username == NULL || temp_password == NULL) { return -1; }
+            
             
             // salvo in memoria la porta del server
             user->srv_port = malloc(5);
@@ -315,21 +323,16 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
             user->srv_port[len] = '\0';
             
             // salvo in memoria l'username dell'utente
-            temp_username = strtok(NULL, " ");
             len = strlen(temp_username);
             user->my_username = malloc(len + 1);
             strncpy(user->my_username, temp_username, len);
             user->my_username[len] = '\0';
             
             // salvo in memoria la password dell'utente
-            temp_password = strtok(NULL, " ");
             len = strlen(temp_password);
             user->my_password = malloc(len + 1);
             strncpy(user->my_password, temp_password, len);
             user->my_password[len] = '\0';
-
-            // controllo che l'utente abbia inserito i dati
-            if(user->my_username == NULL || user->my_password == NULL) { return -1; }
 
             ret = signup(command, user, sd, server_addr);
             if(ret == 0) { user->user_state = LOGGED; }
@@ -349,12 +352,20 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
             
             show(command, sd, user->dst_username);
         } else if(!strncmp(command, "chat", 4)) {
-            user->dst_username = strtok(NULL, " ");
+            
+            temp_username = strtok(NULL, " ");
 
             // controllo che l'utente abbia inserito i dati
-            if(user->dst_username == NULL) { return -2; }
+            if(temp_username == NULL) { return -2; }
+
+            // mi salvo il destinatario del messaggio
+            len = strlen(temp_username);
+            user->dst_username = malloc(len + 1);
+            strncpy(user->dst_username, temp_username, len);
+            user->dst_username[len] = '\0';
             
             ret = chat(command, sd, user->my_username, user->dst_username);
+            
             // se l'utente era online ritorno la sua porta
             if(ret > 0) { return ret; }
             else return -4;

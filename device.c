@@ -132,24 +132,31 @@ void ioMultiplexing(int listener, int* sd, char* buffer) {
                                 ret = send_TCP(sd, "\\q\0");
                                 if(ret < 0) { break; }
                             }
-                        
+                            // libero la memoria allocata per l'username del destinatario
+                            free(user.dst_username);
                             user.user_state = LOGGED;
                             printf("Chat terminata con successo!\n");
                             continue;
                         }
                         
-                        // aggiungo l'username al messaggio 
-                        len = strlen(buffer) + strlen(user.my_username) + 3;
-                        message = malloc(len);
-                        snprintf(message, len, "%s: %s", user.my_username, buffer);
-                        
                         // invio il messaggio al device o al server
                         if(user.user_state == CHATTING_ONLINE) {
+                            // aggiungo l'username al messaggio 
+                            len = strlen(buffer) + strlen(user.my_username) + 3;
+                            message = malloc(len);
+                            snprintf(message, len, "%s: %s", user.my_username, buffer);
+                            
+                            // invio il messaggio
                             ret = send_TCP(&p2p_sd, (char*)message);
                             if(ret < 0) { continue; }
                             printf("*");
                             fflush(stdout);
                         } else {
+                            // aggiungo le informazioni al messaggio
+                            len = strlen(buffer) + strlen(user.my_username) + strlen(user.dst_username) + 4;
+                            message = malloc(len);
+                            snprintf(message, len, "%s %s %s", user.my_username, user.dst_username, buffer);
+                            
                             ret = send_TCP(sd, (char*)message);
                             if(ret < 0) { continue; }
                         }

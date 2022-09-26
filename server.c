@@ -89,18 +89,21 @@ void ioMultiplexing(int listener) {
                             if(ret < 0) { printf("Richiesta non valida\n"); continue; }
                             else if(ret == 1) { username[strlen(username)] = '\0'; }  
                             else if(ret == 2) { // in questo caso salvo i messaggi che arriano dal client
-                                do {
+                                while(1) {
                                     // inizializzo il buffer 
                                     memset(&buffer, '\0', BUFFER_SIZE);
 
                                     // ricevo il messaggio dal client
                                     ret = receive_TCP(&i, buffer);
                                     if(ret < 0) { continue; }
-                                    // salvo il messaggio
-                                    // save_message();
-                                    if(strncmp(buffer, "\\q", 2)) { printf("Messaggio salvato con successo!\n"); }
-                                    else { printf("Chat terminata con successo!\n"); }
-                                } while(strncmp(buffer, "\\q", 2));
+                                    
+                                    if(strncmp(buffer, "\\q", 2)) { 
+                                        // salvo il messaggio
+                                        saveMessage(buffer);
+                                        printf("Messaggio salvato con successo!\n"); 
+                                    }
+                                    else { printf("Chat terminata con successo!\n"); break; }
+                                }
                             }
                         }
                         
