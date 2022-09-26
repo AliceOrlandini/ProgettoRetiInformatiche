@@ -87,7 +87,21 @@ void ioMultiplexing(int listener) {
                             // servo la richiesta del client
                             ret = serveDeviceRequest(&i, buffer, &username);
                             if(ret < 0) { printf("Richiesta non valida\n"); continue; }
-                            username[strlen(username)] = '\0';  
+                            else if(ret == 1) { username[strlen(username)] = '\0'; }  
+                            else if(ret == 2) { // in questo caso salvo i messaggi che arriano dal client
+                                do {
+                                    // inizializzo il buffer 
+                                    memset(&buffer, '\0', BUFFER_SIZE);
+
+                                    // ricevo il messaggio dal client
+                                    ret = receive_TCP(&i, buffer);
+                                    if(ret < 0) { continue; }
+                                    // salvo il messaggio
+                                    // save_message();
+                                    if(strncmp(buffer, "\\q", 2)) { printf("Messaggio salvato con successo!\n"); }
+                                    else { printf("Chat terminata con successo!\n"); }
+                                } while(strncmp(buffer, "\\q", 2));
+                            }
                         }
                         
                         // chiudo il socket di comunicazione

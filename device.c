@@ -61,7 +61,10 @@ void ioMultiplexing(int listener, int* sd, char* buffer) {
                         if(p2p_sd > fdmax) { fdmax = p2p_sd; } 
                     }
                     // cambio lo stato dell'utente
-                    user.user_state = CHATTING;
+                    user.user_state = CHATTING_ONLINE;
+                    // stampa di estetica
+                    printf("> ");
+                    fflush(stdout);
                 }
                 else if(i == STANDARD_INPUT) {
                     
@@ -70,7 +73,7 @@ void ioMultiplexing(int listener, int* sd, char* buffer) {
                     len = strlen(buffer);
                     buffer[len - 1] = '\0';
                     
-                    if(user.user_state != CHATTING) {
+                    if(user.user_state == LOGGED) {
                         // eseguo l'azione prevista dal comando
                         ret = executeDeviceCommand((char*)buffer, &user, sd, NULL);
                         if(ret == -2) { printf("Comando non valido.\n"); }
@@ -83,16 +86,31 @@ void ioMultiplexing(int listener, int* sd, char* buffer) {
                             // faccio terminare l'io multiplexing e di conseguenza il device
                             return;
                         }
-                        // in questo caso ret continene la porta del destinatario
+                        // in questo caso il destinatario non è online quindi
+                        // i messaggi verranno salvati sul server
+                        else if(ret == -4) {
+                            user.user_state = CHATTING_OFFLINE;
+                            // pulisco il buffer
+                            memset(buffer, '\0', BUFFER_SIZE);
+                            
+                            printf("L'utente è offline, i messaggi verranno salvati sul server.\n> ");
+                            fflush(stdout);
+                            continue;
+                        }
+                        // in questo caso ret continene la porta del destinatario che è online
                         else if(ret > 0) {
                             // creo una nuova connessione con il destinatario
                             ret = connect_to(&p2p_sd, &dst_addr, ret);
                             FD_SET(p2p_sd, &master);
                             if(p2p_sd > fdmax) { fdmax = p2p_sd; } 
-                            user.user_state = CHATTING;
+                            user.user_state = CHATTING_ONLINE;
                             
                             // pulisco il buffer
                             memset(buffer, '\0', BUFFER_SIZE);
+                            
+                            // stampa di estetica
+                            printf("> ");
+                            fflush(stdout);
                             continue;
                         }
                         // pulisco il buffer
@@ -100,13 +118,23 @@ void ioMultiplexing(int listener, int* sd, char* buffer) {
 
                         // stampo il menu dei comandi disponibili
                         printCommands(user);
-                    } else {
+                    } else if(user.user_state == CHATTING_ONLINE || user.user_state == CHATTING_OFFLINE) {
+                        
                         // controllo se l'utente ha richiesto di terminare la chat
                         if(!strncmp(buffer, "\\q", 2)) {
-                            printf("FINE CHAT\n");
+
+                            if(user.user_state == CHATTING_ONLINE) {
+                                // eseguo la disconnessione dal destinatario
+                                disconnect_to(&p2p_sd);
+                                FD_CLR(p2p_sd, &master);
+                            } else {
+                                // comunico al server che il client ha chiuso la chat
+                                ret = send_TCP(sd, "\\q\0");
+                                if(ret < 0) { break; }
+                            }
+                        
                             user.user_state = LOGGED;
-                            disconnect_to(&p2p_sd);
-                            FD_CLR(p2p_sd, &master);
+                            printf("Chat terminata con successo!\n");
                             continue;
                         }
                         
@@ -115,14 +143,27 @@ void ioMultiplexing(int listener, int* sd, char* buffer) {
                         message = malloc(len);
                         snprintf(message, len, "%s: %s", user.my_username, buffer);
                         
-                        // invio il messaggio
-                        ret = send_TCP(&p2p_sd, (char*)message);
-                        if(ret < 0) { continue; }
+                        // invio il messaggio al device o al server
+                        if(user.user_state == CHATTING_ONLINE) {
+                            ret = send_TCP(&p2p_sd, (char*)message);
+                            if(ret < 0) { continue; }
+                            printf("*");
+                            fflush(stdout);
+                        } else {
+                            ret = send_TCP(sd, (char*)message);
+                            if(ret < 0) { continue; }
+                        }
+                        
+                        // stampa di estetica
+                        printf("* %s\n> ", buffer);
+                        fflush(stdout);
                         
                         // pulisco il buffer
                         memset(buffer, '\0', BUFFER_SIZE);
+                        
                         // distruggo il messaggio 
                         free(message);
+
                     }  
                 } else {
                     // pulisco il buffer
@@ -140,7 +181,9 @@ void ioMultiplexing(int listener, int* sd, char* buffer) {
                         memset(buffer, '\0', BUFFER_SIZE);
                         continue;
                     }
-                    printf("%s\n", buffer);
+                    // stampo a video il messaggio ricevuto
+                    printf("%s\n> ", buffer);
+                    fflush(stdout);
                     // pulisco il buffer
                     memset(buffer, '\0', BUFFER_SIZE);
                 }

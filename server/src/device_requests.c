@@ -296,6 +296,8 @@ int serveDeviceRequest(int* sd, char* request, char** username) {
         dev_username = strtok(NULL, " ");
         
         chat(sd, dev_username);
+        
+        return 2;
     } else if(!strncmp(command, "share", 5)) {
         share();
     } else { return -1; }

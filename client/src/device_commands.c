@@ -357,6 +357,7 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
             ret = chat(command, sd, user->my_username, user->dst_username);
             // se l'utente era online ritorno la sua porta
             if(ret > 0) { return ret; }
+            else return -4;
         } else if(!strncmp(command, "share", 5)) {
             file_name = strtok(NULL, " ");
 

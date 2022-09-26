@@ -1,4 +1,4 @@
-enum User_State { DISCONNECTED, LOGGED, CHATTING };
+enum User_State { DISCONNECTED, LOGGED, CHATTING_ONLINE, CHATTING_OFFLINE };
 struct User {
     enum User_State user_state;
     char* my_username;
