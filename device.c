@@ -23,6 +23,7 @@ struct User user;
 */
 void ioMultiplexing(int listener, int* sd, char* buffer) {
     
+    int udp_sd;
     int p2p_sd;
     struct sockaddr_in src_addr;
     struct sockaddr_in dst_addr;

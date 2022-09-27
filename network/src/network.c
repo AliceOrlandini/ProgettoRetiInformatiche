@@ -112,6 +112,59 @@ int receive_TCP(int* sd, char* message) {
 }
 
 /*
+    Funzione per l'invio di messaggi UDP.
+*/
+int send_UDP(int* sd, in_port_t port, char* message) {
+/*  
+    int ret;
+    int len;
+    struct sockaddr_in addr;
+    int addrlen = sizeof(addr);
+
+    // creo il socket
+    *sd = socket(AF_INET, SOCK_DGRAM, 0);
+    if(*sd < 0) { perror("Error0 send_UDP"); return -1; }
+
+    // creo l'indirizzo
+    memset(&addr, 0, addrlen);
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+
+    // invio i dati
+    len = sendto(*sd, message, strlen(message), 0, (struct sockaddr*)&addr, addrlen);
+    if(len < 0) { perror("Error1 send_UDP"); return -1; }
+    
+    // chiudo il socket
+    close(*sd);
+    return 0;
+*/
+}
+
+int receive_UDP(int* sd, in_port_t port, struct sockaddr_in* my_addr, char* message) {
+/*
+    int ret;
+    int len;
+    struct sockaddr_in addr;
+    int addrlen = sizeof(addr);
+
+    // creo il socket
+    *sd = socket(AF_INET, SOCK_DGRAM, 0);
+    if(*sd < 0) { perror("Error0 send_UDP"); return -1; }
+
+    // creo l'indirizzo
+    memset(my_addr, 0, addrlen);
+    my_addr->sin_family = AF_INET;
+    my_addr->sin_port = htons(port);
+    inet_pton(AF_INET, "127.0.0.1", &my_addr->sin_addr);
+    ret = bind(*sd, (struct sockaddr*)my_addr, addrlen);
+
+    // ricevo i dati
+    len = recvfrom(*sd, message, sizeof(message), 0, (struct sockaddr*)&addr, &addrlen);
+*/
+}
+
+/*
     Funzione per chiudere il socket.
 */
 int disconnect_to(int* sd) {

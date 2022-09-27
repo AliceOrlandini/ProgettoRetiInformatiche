@@ -206,6 +206,7 @@ bool checkOnline(char* dst_username, char* port) {
     int username_len;
     char* username;
     char* password;
+    char* tmp_port;
     char* timestamp_login;
     char* timestamp_logout;
 
@@ -218,7 +219,9 @@ bool checkOnline(char* dst_username, char* port) {
         // ricavo i dati del destinatario
         username = strtok(file_line, " ");
         password = strtok(NULL, " ");
-        memcpy(port, strtok(NULL, " "), 4);
+        tmp_port = strtok(NULL, " ");
+        memcpy(port, tmp_port, strlen(tmp_port));
+        *(port + strlen(tmp_port)) = '\0';
         timestamp_login = strtok(NULL, " ");
         timestamp_logout = strtok(NULL, " ");
 
@@ -233,6 +236,7 @@ bool checkOnline(char* dst_username, char* port) {
     fclose(fp);
     return false;
 }
+
 /*
     Permette all'utente di ricevere i messaggi pendenti da dst_username.
     Per fare ciò si scorre la lista dei messaggi pendenti e si inviano 
@@ -247,6 +251,8 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* src_usern
     int username_len;
     struct pendingMessage* elem;
     char* port;
+    char dst_port[5];
+    int udp_sd;
 
     if(*pending_message_list == NULL) {
         
@@ -303,7 +309,9 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* src_usern
     // controllo se l'utente src_username è online 
     // in caso affermativo gli invio la notifica di avvenuta lettura dei messaggi
     // altrimenti mantengo l'informazione che verrà inviata quando tornerà online
-    
+    if(checkOnline(src_username, dst_port)) {
+        ret = send_UDP(&sd, atoi(port), "1");
+    }
 
     // ora che ho inviato tutti i messaggi elimino dalla lista e dal file
     // db_messages.txt i messaggi mandati da src_username all'utente
@@ -325,49 +333,13 @@ void share() {
 */
 int chat(int* sd, char* dst_username) {
     
-    // int ret; 
-    // char port[4];
-    int ret;
-    FILE* fp;
-    char file_line[64];
-    int username_len;
-    char* username;
-    char* password;
-    char* port;
-    char* timestamp_login;
-    char* timestamp_logout;
-    bool status = false; // true: online; false: offline;
+    int ret; 
+    char port[5];
 
-    // controllo se il destinatario è online o meno
-    fp = fopen("./server/files/db_users.txt", "r"); 
-    if(fp == NULL) { printf("Error0 chat\n"); return 0; }
-
-    // verifico che il device sia online
-    while (fgets(file_line, sizeof(file_line), fp) != NULL) {
-        
-        // ricavo i dati del destinatario
-        username = strtok(file_line, " ");
-        password = strtok(NULL, " ");
-        port = strtok(NULL, " ");
-        timestamp_login = strtok(NULL, " ");
-        timestamp_logout = strtok(NULL, " ");
-
-        username_len = (strlen(username) > strlen(dst_username))? strlen(username):strlen(dst_username);
-        
-        // controllo se il timestamp del logout è NULL
-        if(!strncmp(timestamp_logout, "NULL", 4) && !strncmp(dst_username, username, username_len)) {
-            status = true;
-            break;
-        }
-    }
-
-    fclose(fp);
-
-    if(status) {
+    if(checkOnline(dst_username, port)) {
         // nel caso in cui il destinatario sia online restituisco 
         // al client la porta del destinatario in modo che questo 
         // possa instaurare una comunicazione p2p
-        printf("ONLINE\n");
         ret = send_TCP(sd, port);
         if(ret < 0) { printf("Impossibile iniziare la chat\n"); }
         return 0;
@@ -375,7 +347,6 @@ int chat(int* sd, char* dst_username) {
         // nel caso in cui il destinatario sia offline 
         // restituisco al client l'avviso che il messaggio
         // è stato salvato
-        printf("OFFLINE\n");
         ret = send_TCP(sd, "offline");
         if(ret < 0) { printf("Impossibile salvare la chat\n"); }
         return 2;
