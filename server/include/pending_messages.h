@@ -12,3 +12,4 @@ void createPMList(struct pendingMessage**, char*);
 void delPMList(struct pendingMessage**);
 void printPMList(struct pendingMessage**);
 void addElemToPMList(struct pendingMessage**, char*, char*, char*);
+void delMessagesFromPMList(struct pendingMessage**, char*);

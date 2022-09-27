@@ -99,7 +99,7 @@ void ioMultiplexing(int listener) {
 
                                     // ricevo il messaggio dal client
                                     ret = receive_TCP(&i, buffer);
-                                    if(ret < 0) { continue; }
+                                    if(ret < 0) { out(username); delPMList(&pending_message_list); return; }
                                     
                                     if(strncmp(buffer, "\\q", 2)) { 
                                         // salvo il messaggio

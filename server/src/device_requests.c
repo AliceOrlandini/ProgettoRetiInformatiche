@@ -121,7 +121,7 @@ void signup(int* sd, char* dev_username, char* dev_password, char* dev_port) {
 */
 void hanging(int* sd, struct pendingMessage** pending_message_list) {
     
-    char* username[32]; // ipotizzo un massimo di 32 utenti
+    char* username[32];
     int num_messages[32];
     char* timestamp[32];
     int num_users = 0;
@@ -196,6 +196,44 @@ void hanging(int* sd, struct pendingMessage** pending_message_list) {
 }
 
 /*
+    Funzione per verificare se un utente è online o meno.
+*/
+bool checkOnline(char* dst_username, char* port) {
+    
+    int ret;
+    FILE* fp;
+    char file_line[64];
+    int username_len;
+    char* username;
+    char* password;
+    char* timestamp_login;
+    char* timestamp_logout;
+
+    fp = fopen("./server/files/db_users.txt", "r"); 
+    if(fp == NULL) { printf("Error0 chat\n"); return false; }
+
+    // se l'utente è online allora avrà campo NULL nel file
+    while (fgets(file_line, sizeof(file_line), fp) != NULL) {
+        
+        // ricavo i dati del destinatario
+        username = strtok(file_line, " ");
+        password = strtok(NULL, " ");
+        memcpy(port, strtok(NULL, " "), 4);
+        timestamp_login = strtok(NULL, " ");
+        timestamp_logout = strtok(NULL, " ");
+
+        username_len = (strlen(username) > strlen(dst_username))? strlen(username):strlen(dst_username);
+        
+        // controllo se il timestamp del logout è NULL
+        if(!strncmp(timestamp_logout, "NULL", 4) && !strncmp(dst_username, username, username_len)) {
+            fclose(fp);
+            return true;
+        }
+    }
+    fclose(fp);
+    return false;
+}
+/*
     Permette all'utente di ricevere i messaggi pendenti da dst_username.
     Per fare ciò si scorre la lista dei messaggi pendenti e si inviano 
     al client. 
@@ -208,6 +246,7 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* src_usern
     int len;
     int username_len;
     struct pendingMessage* elem;
+    char* port;
 
     if(*pending_message_list == NULL) {
         
@@ -261,9 +300,16 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* src_usern
         elem = elem->next;
     }
 
+    // controllo se l'utente src_username è online 
+    // in caso affermativo gli invio la notifica di avvenuta lettura dei messaggi
+    // altrimenti mantengo l'informazione che verrà inviata quando tornerà online
+    
+
     // ora che ho inviato tutti i messaggi elimino dalla lista e dal file
     // db_messages.txt i messaggi mandati da src_username all'utente
-    delMessages(src_username, my_username, num_messages);
+    delMessagesFromFile(src_username, my_username, num_messages);
+    delMessagesFromPMList(pending_message_list, src_username);
+    return;
 }
 
 /*
@@ -277,8 +323,10 @@ void share() {
     Permette ad un utente di iniziare una chat con dst_username.
     Se questo non dovesse essere online i messaggi verranno bufferizzati.
 */
-void chat(int* sd, char* dst_username) {
+int chat(int* sd, char* dst_username) {
     
+    // int ret; 
+    // char port[4];
     int ret;
     FILE* fp;
     char file_line[64];
@@ -292,9 +340,9 @@ void chat(int* sd, char* dst_username) {
 
     // controllo se il destinatario è online o meno
     fp = fopen("./server/files/db_users.txt", "r"); 
-    if(fp == NULL) { printf("Error0 chat\n"); return; }
+    if(fp == NULL) { printf("Error0 chat\n"); return 0; }
 
-    // verifico che il device sia effettivamente registrato
+    // verifico che il device sia online
     while (fgets(file_line, sizeof(file_line), fp) != NULL) {
         
         // ricavo i dati del destinatario
@@ -316,17 +364,21 @@ void chat(int* sd, char* dst_username) {
     fclose(fp);
 
     if(status) {
-        printf("ONLINE\n");
         // nel caso in cui il destinatario sia online restituisco 
         // al client la porta del destinatario in modo che questo 
         // possa instaurare una comunicazione p2p
+        printf("ONLINE\n");
         ret = send_TCP(sd, port);
+        if(ret < 0) { printf("Impossibile iniziare la chat\n"); }
+        return 0;
     } else {
-        printf("OFFLINE\n");
         // nel caso in cui il destinatario sia offline 
         // restituisco al client l'avviso che il messaggio
         // è stato salvato
+        printf("OFFLINE\n");
         ret = send_TCP(sd, "offline");
+        if(ret < 0) { printf("Impossibile salvare la chat\n"); }
+        return 2;
     }
 }
 
@@ -425,7 +477,6 @@ void printFile(FILE *fptr) {
         putchar(ch);
 }
 
-
 /*
     Elimina le righe di un file specificate nel vettore lines.
 */
@@ -447,12 +498,11 @@ void deleteLine(FILE *srcFile, FILE *tempFile, int* lines, int num_messages)
     }
 }
 
-
 /*
     Permette di eliminare dal file db_messages.txt i messaggi mandati da
     src_username a dst_username.    
 */
-void delMessages(char* src_username, char* dst_username, int num_messages) {
+void delMessagesFromFile(char* src_username, char* dst_username, int num_messages) {
 
     FILE *srcFile;
     FILE *tempFile;
@@ -509,8 +559,9 @@ void delMessages(char* src_username, char* dst_username, int num_messages) {
     // elimino srcFile e rinomino tempFile 
     remove("./server/files/db_messages.txt");
     rename("./server/files/delete-line.txt", "./server/files/db_messages.txt");
-
+    return;
 }
+
 /*
     Gestione della richiesta del device, a seconda
     del comando ricevuto si invoca la funzione corrispondente.
@@ -522,6 +573,7 @@ int serveDeviceRequest(int* sd, char* request, char** username, struct pendingMe
     char* dev_password;
     char* dev_port;
     int len;
+    int ret;
 
     printf("Richiesta ricevuta da un client %s\n", request);
     
@@ -563,9 +615,9 @@ int serveDeviceRequest(int* sd, char* request, char** username, struct pendingMe
     } else if(!strncmp(command, "chat", 4)) {
         dev_username = strtok(NULL, " ");
         
-        chat(sd, dev_username);
+        ret = chat(sd, dev_username);
         
-        return 2;
+        return ret;
     } else if(!strncmp(command, "share", 5)) {
         share();
     } else { return -1; }

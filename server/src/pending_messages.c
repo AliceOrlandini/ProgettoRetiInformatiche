@@ -107,3 +107,27 @@ void createPMList(struct pendingMessage** pending_message_list, char* dev_userna
     // stampa di controllo
     // printPMList(pending_message_list);
 }
+
+void delMessagesFromPMList(struct pendingMessage** pending_message_list, char* username) {
+    
+    int len;
+
+    if(*pending_message_list == NULL) {
+        return;
+    }
+
+    len = (strlen((*pending_message_list)->username_src) > strlen(username))? strlen((*pending_message_list)->username_src):strlen(username);
+    if(!strncmp((*pending_message_list)->username_src, username, len)) {
+        struct pendingMessage* elem = *pending_message_list;
+        *pending_message_list = (*pending_message_list)->next;
+        
+        // elimino la memoria allocata per il messaggio
+        free(elem->username_src);
+        free(elem->timestamp);
+        free(elem->message);
+
+        delMessagesFromPMList(pending_message_list, username);
+    } else {
+        delMessagesFromPMList(&(*pending_message_list)->next, username);
+    }
+}

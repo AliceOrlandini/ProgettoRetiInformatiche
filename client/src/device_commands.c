@@ -258,7 +258,7 @@ int chat(char* command, int* sd, char* my_username, char* dst_username) {
 
     if(!strncmp(message, "offline", 7)) { // caso in cui il destinatario è offline
         printf("Il destinatario è offline.\n");
-        return -1;
+        return -4;
     }
 
     printf("Chat iniziata con successo! La porta del destinatario è: %d\n", atoi(message));
@@ -422,9 +422,7 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
             
             ret = chat(command, sd, user->my_username, user->dst_username);
             
-            // se l'utente era online ritorno la sua porta
-            if(ret > 0) { return ret; }
-            else return -4;
+            return ret;
         } else if(!strncmp(command, "share", 5)) {
             file_name = strtok(NULL, " ");
 
