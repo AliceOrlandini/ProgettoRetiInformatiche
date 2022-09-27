@@ -200,7 +200,7 @@ void hanging(int* sd, struct pendingMessage** pending_message_list) {
     Per fare ciò si scorre la lista dei messaggi pendenti e si inviano 
     al client. 
 */
-void show(int* sd, struct pendingMessage** pending_message_list, char* dst_username) {
+void show(int* sd, struct pendingMessage** pending_message_list, char* src_username, char* my_username) {
     
     int num_messages = 0;
     char* message;
@@ -220,12 +220,11 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* dst_usern
         return;
     }
 
-    // conto il numero di messaggi che dst_username gli ha mandato
+    // conto il numero di messaggi che src_username gli ha mandato
     elem = *pending_message_list;
     while(elem != NULL) {
-        
-        username_len = (strlen(elem->username_src) > strlen(dst_username))? strlen(elem->username_src):strlen(dst_username);
-        if(!strncmp(elem->username_src, dst_username, username_len)) {
+        username_len = (strlen(elem->username_src) > strlen(src_username))? strlen(elem->username_src):strlen(src_username);
+        if(!strncmp(elem->username_src, src_username, username_len)) {
             num_messages++;
         }
         elem = elem->next;
@@ -242,11 +241,11 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* dst_usern
         return;
     }
 
-    // invio al client tutti i messaggi
+    // invio al client tutti i messaggi ricevuti da src_username
     elem = *pending_message_list;
     while(elem != NULL) {
-        username_len = (strlen(elem->username_src) > strlen(dst_username))? strlen(elem->username_src):strlen(dst_username);
-        if(!strncmp(elem->username_src, dst_username, username_len)) {
+        username_len = (strlen(elem->username_src) > strlen(src_username))? strlen(elem->username_src):strlen(src_username);
+        if(!strncmp(elem->username_src, src_username, username_len)) {
             // creo il messaggio da inviare al client
             len = strlen(elem->timestamp) + strlen(elem->message) + 2;
             message = malloc(len);
@@ -261,6 +260,10 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* dst_usern
         }
         elem = elem->next;
     }
+
+    // ora che ho inviato tutti i messaggi elimino dalla lista e dal file
+    // db_messages.txt i messaggi mandati da src_username all'utente
+    delMessages(src_username, my_username, num_messages);
 }
 
 /*
@@ -413,6 +416,102 @@ void saveMessage(char* message) {
 }
 
 /*
+    Stampa il contenuto di un file.
+*/
+void printFile(FILE *fptr) {
+    char ch;
+
+    while((ch = fgetc(fptr)) != EOF)
+        putchar(ch);
+}
+
+
+/*
+    Elimina le righe di un file specificate nel vettore lines.
+*/
+void deleteLine(FILE *srcFile, FILE *tempFile, int* lines, int num_messages)
+{
+    char buffer[BUFFER_SIZE];
+    int count = 1;
+    int i;
+    bool found;
+
+    while ((fgets(buffer, BUFFER_SIZE, srcFile)) != NULL) {
+        found = false;
+        for(i = 0; i < num_messages; i++) {
+            if (lines[i] == count) { found = true; break; } 
+        }
+        if(!found) { fputs(buffer, tempFile); }
+
+        count++;
+    }
+}
+
+
+/*
+    Permette di eliminare dal file db_messages.txt i messaggi mandati da
+    src_username a dst_username.    
+*/
+void delMessages(char* src_username, char* dst_username, int num_messages) {
+
+    FILE *srcFile;
+    FILE *tempFile;
+    int lines[num_messages];
+    int line = 0;
+    int i = 0;
+    
+    int ret;
+    char file_line[BUFFER_SIZE];
+    char* timestamp;
+    char* username_src;
+    char* username_dst;
+    int username_src_len;
+    int username_dst_len;
+
+    // inizializzo il vettore delle righe
+    for(i = 0; i < num_messages; i++)
+        lines[i] = 0;
+    i = 0;
+
+    // apro i file
+    srcFile  = fopen("./server/files/db_messages.txt", "r");
+    tempFile = fopen("./server/files/delete-line.txt", "w");
+    if(srcFile == NULL || tempFile == NULL) { printf("Error0 delMessages\n"); return; }
+
+    while(fgets(file_line, sizeof(file_line), srcFile) != NULL) {
+        
+        line++;
+
+        timestamp = strtok(file_line, " ");
+        username_src = strtok(NULL, " ");
+        username_dst = strtok(NULL, " ");
+
+        username_src_len = (strlen(src_username) > strlen(username_src))? strlen(src_username):strlen(username_src);
+        username_dst_len = (strlen(dst_username) > strlen(username_dst))? strlen(dst_username):strlen(username_dst);
+
+        // controllo se ho trovato un messaggio da dst_username a src_username
+        if(!strncmp(src_username, username_src, username_src_len) && !strncmp(dst_username, username_dst, username_dst_len)) {
+            lines[i] = line;
+            i++;
+        }
+    }
+
+    // riavvolgo il file
+    rewind(srcFile);
+
+    // elimino le righe trovate
+    deleteLine(srcFile, tempFile, lines, num_messages);
+
+    // chiudo i file
+    fclose(srcFile);
+    fclose(tempFile);
+
+    // elimino srcFile e rinomino tempFile 
+    remove("./server/files/db_messages.txt");
+    rename("./server/files/delete-line.txt", "./server/files/db_messages.txt");
+
+}
+/*
     Gestione della richiesta del device, a seconda
     del comando ricevuto si invoca la funzione corrispondente.
 */
@@ -460,7 +559,7 @@ int serveDeviceRequest(int* sd, char* request, char** username, struct pendingMe
     } else if(!strncmp(command, "show", 4)) {
         dev_username = strtok(NULL, " ");
         
-        show(sd, pending_message_list, dev_username);
+        show(sd, pending_message_list, dev_username, *username);
     } else if(!strncmp(command, "chat", 4)) {
         dev_username = strtok(NULL, " ");
         
