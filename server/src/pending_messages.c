@@ -6,10 +6,16 @@
 
 void addElemToPMList(struct pendingMessage** pending_message_list, char* username, char* timestamp, char* message) {
     
-    int len;
-    
-    // creo il nuovo messaggio
+    // aggiungo il nuovo messaggio in coda alla lista
     struct pendingMessage* new_message;
+    struct pendingMessage* q;
+    struct pendingMessage* p;
+    int len;
+
+    for(q = *pending_message_list; q != NULL; q = q->next) {
+        p = q;
+    }
+    // inizializzo il nuovo messaggio
     new_message = malloc(sizeof(struct pendingMessage));
 
     // inizializzo i dati del nuovo messaggio
@@ -28,9 +34,11 @@ void addElemToPMList(struct pendingMessage** pending_message_list, char* usernam
     strncpy(new_message->message, message, len);
     new_message->message[len] = '\0';
 
-    // aggiungo il nuovo messaggio in testa alla lista
-    new_message->next = *pending_message_list;
-    *pending_message_list = new_message;
+    new_message->next = NULL;
+    if(q == *pending_message_list)
+        *pending_message_list = new_message;
+    else 
+        p->next = new_message;
 
     return;
 }
@@ -51,7 +59,7 @@ void delPMList(struct pendingMessage** pending_message_list) {
 
 void printPMList(struct pendingMessage** pending_message_list) {
     
-    if(pending_message_list == NULL) {
+    if(*pending_message_list == NULL) {
         return;
     }
 

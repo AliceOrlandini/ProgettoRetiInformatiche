@@ -10,6 +10,8 @@
 
 /*
     Permette ad un utente di effettuare il login.
+    Si salverà all'interno del file db_users.txt il fatto che l'utente
+    è online impostando il timestamp_logout a NULL.
 */
 void in(int* sd, char* dev_username, char* dev_password) {
     
@@ -79,6 +81,8 @@ void in(int* sd, char* dev_username, char* dev_password) {
 
 /*
     Permette a un utente di registrarsi un username e una password.
+    Per fare ciò si aggiunge una riga nel file db_users.txt contenente
+    le informazioni dell'utente.
 */
 void signup(int* sd, char* dev_username, char* dev_password, char* dev_port) {
     
@@ -113,6 +117,7 @@ void signup(int* sd, char* dev_username, char* dev_password, char* dev_port) {
 /*
     Scorre la lista dei messaggi pendenti e per ogni utente conta il 
     numero di messaggi pendenti inviati e il timestamp del più recente.
+    Infine, invia tutti i risultati al client.
 */
 void hanging(int* sd, struct pendingMessage** pending_message_list) {
     
@@ -125,7 +130,14 @@ void hanging(int* sd, struct pendingMessage** pending_message_list) {
     char* message;
     int ret;
 
-    if(pending_message_list == NULL) {
+    if(*pending_message_list == NULL) {
+
+        // mando al client l'informazione che nessuno gli ha inviato messaggi
+        message = malloc(3);
+        sprintf(message, "%d", num_users);
+        ret = send_TCP(sd, message);
+        if(ret < 0) { printf("Impossibile eseguire hanging.\n"); }
+        free(message);
         return;
     }
 
@@ -151,8 +163,8 @@ void hanging(int* sd, struct pendingMessage** pending_message_list) {
             len = (strlen(username[i]) > strlen(elem->username_src))? strlen(username[i]):strlen(elem->username_src);
             if(!strncmp(username[i], elem->username_src, len)) {
                 num_messages[i]++;
+                timestamp[i] = elem->timestamp;
                 break;
-                // timestamp[i] = elem->timestamp; inserimento in testa
             }
         }
         elem = elem->next;
@@ -162,7 +174,7 @@ void hanging(int* sd, struct pendingMessage** pending_message_list) {
     message = malloc(3);
     sprintf(message, "%d", num_users);
     ret = send_TCP(sd, message);
-    if(ret < 0) { printf("Impossibile eseguire hanging.\n"); return; }
+    if(ret < 0) { printf("Impossibile eseguire hanging.\n"); free(message); return; }
     free(message);
     
     // invio al client tutte le righe
@@ -175,7 +187,7 @@ void hanging(int* sd, struct pendingMessage** pending_message_list) {
         
         // invio il messaggio
         ret = send_TCP(sd, message);
-        if(ret < 0) { printf("Impossibile eseguire hanging.\n"); return; }
+        if(ret < 0) { printf("Impossibile eseguire hanging.\n"); }
         
         // libero la memoria allocata per il messaggio
         free(message);
@@ -184,10 +196,71 @@ void hanging(int* sd, struct pendingMessage** pending_message_list) {
 }
 
 /*
-    Permette 
+    Permette all'utente di ricevere i messaggi pendenti da dst_username.
+    Per fare ciò si scorre la lista dei messaggi pendenti e si inviano 
+    al client. 
 */
-void show() {
+void show(int* sd, struct pendingMessage** pending_message_list, char* dst_username) {
+    
+    int num_messages = 0;
+    char* message;
+    int ret;
+    int len;
+    int username_len;
+    struct pendingMessage* elem;
 
+    if(*pending_message_list == NULL) {
+        
+        // mando al client l'informazione che questo utente non gli ha inviato messaggi
+        message = malloc(3);
+        sprintf(message, "%d", num_messages);
+        ret = send_TCP(sd, message);
+        if(ret < 0) { printf("Impossibile eseguire hanging.\n"); }
+        free(message);
+        return;
+    }
+
+    // conto il numero di messaggi che dst_username gli ha mandato
+    elem = *pending_message_list;
+    while(elem != NULL) {
+        
+        username_len = (strlen(elem->username_src) > strlen(dst_username))? strlen(elem->username_src):strlen(dst_username);
+        if(!strncmp(elem->username_src, dst_username, username_len)) {
+            num_messages++;
+        }
+        elem = elem->next;
+    }
+
+    // invio il numero di messaggi inviati al client
+    message = malloc(3);
+    sprintf(message, "%d", num_messages);
+    ret = send_TCP(sd, message);
+    if(ret < 0) { printf("Impossibile eseguire hanging.\n"); free(message); return; }
+    free(message);
+
+    if(num_messages == 0) {
+        return;
+    }
+
+    // invio al client tutti i messaggi
+    elem = *pending_message_list;
+    while(elem != NULL) {
+        username_len = (strlen(elem->username_src) > strlen(dst_username))? strlen(elem->username_src):strlen(dst_username);
+        if(!strncmp(elem->username_src, dst_username, username_len)) {
+            // creo il messaggio da inviare al client
+            len = strlen(elem->timestamp) + strlen(elem->message) + 2;
+            message = malloc(len);
+            snprintf(message, len, "%s %s", elem->timestamp, elem->message);
+
+            // invio il messaggio
+            ret = send_TCP(sd, message);
+            if(ret < 0) { printf("Impossibile eseguire hanging.\n"); }
+            
+            // libero la memoria allocata per il messaggio
+            free(message);
+        }
+        elem = elem->next;
+    }
 }
 
 /*
@@ -255,7 +328,7 @@ void chat(int* sd, char* dst_username) {
 }
 
 /*
-    Permette di registrare l'ultimo accesso dell'utente.
+    Permette di registrare l'ultimo accesso dell'utente sul file db_users.txt.
 */
 void out(char* dev_username) {
 
@@ -312,7 +385,7 @@ void out(char* dev_username) {
 }
 
 /*
-    Funzione per salvare un messaggio sul file db_messages 
+    Funzione per salvare un messaggio sul file db_messages.txt 
     che contiene tutti i messaggi pendenti.
 */
 void saveMessage(char* message) {
@@ -385,7 +458,9 @@ int serveDeviceRequest(int* sd, char* request, char** username, struct pendingMe
     } else if(!strncmp(command, "hanging", 7)) {
         hanging(sd, pending_message_list);
     } else if(!strncmp(command, "show", 4)) {
-        show();
+        dev_username = strtok(NULL, " ");
+        
+        show(sd, pending_message_list, dev_username);
     } else if(!strncmp(command, "chat", 4)) {
         dev_username = strtok(NULL, " ");
         

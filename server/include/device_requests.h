@@ -3,7 +3,7 @@
 void in(int*, char*, char*);
 void signup(int*, char*, char*, char*);
 void hanging(int*, struct pendingMessage**);
-void show();
+void show(int*, struct pendingMessage**, char*);
 void share();
 void chat(int*, char*);
 void out(char*);

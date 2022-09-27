@@ -3,3 +3,6 @@ serv
 *.o
 TODO
 .vscode
+server/.DS_Store
+.gitignore
+.DS_Store

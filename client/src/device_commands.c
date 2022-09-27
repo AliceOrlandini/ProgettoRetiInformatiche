@@ -101,7 +101,7 @@ int in(char* command, struct User* user, int* sd, struct sockaddr_in* server_add
 
 /*
     Permette all'utente di ricevere la lista degli utenti 
-    chi gli hanno inviato messaggi mentre era offline.
+    che gli hanno inviato messaggi mentre era offline.
     Per ogni utente il comando mostra username, il numero di
     messaggi pendenti in ingresso e il timestamp del più recente.
 */
@@ -152,7 +152,10 @@ void show(char* command, int* sd, char* username) {
     
     int len;
     int ret;
+    int num_messages;
+    int i;
     char* message; 
+    char buffer[BUFFER_SIZE];
 
     // unisco le tre stringhe per inviare un solo messaggio
     len = strlen(command) + strlen(username) + 2; // il +2 serve per gli spazi
@@ -166,7 +169,31 @@ void show(char* command, int* sd, char* username) {
     // libero la memoria utilizzata per il messaggio
     free(message);
 
-    printf("Show inviata con successo!\n");
+    memset(&buffer, '\0', BUFFER_SIZE);
+
+    // ricevo dal server il numero di messaggi ricevuti
+    ret = receive_TCP(sd, buffer);
+    if(ret < 0) { printf("Impossibile eseguire hanging.\n"); return; }
+    num_messages = atoi(buffer);
+    if(num_messages == 0) {
+        printf("\nQuesto utente non ha inviato messaggi.\n");
+        return;
+    }
+
+    printf("\nI messaggi ricevuti sono:\n");
+
+    // ricevo dal server tutte le info sui messaggi inviati
+    for(i = 0; i < num_messages; i++) {
+        
+        memset(&buffer, '\0', BUFFER_SIZE);
+        
+        ret = receive_TCP(sd, buffer);
+        if(ret < 0) { printf("Show: errore nella ricezione del messaggio.\n"); continue; }
+        
+        // stampo il messaggio
+        printf("%s\n", buffer);
+    }
+
     return;
 }
 
