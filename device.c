@@ -30,29 +30,25 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
 
     int ret;
     int len;
+    int num_online;
+    int j;
     char* message;
 
     if(user->user_state == LOGGED) {
         
         // eseguo l'azione prevista dal comando
         ret = executeDeviceCommand((char*)buffer, user, sd, NULL);
-        if(ret == -2) { printf("Comando non valido.\n"); }
-        
-        // se il comando era out allora tolgo il socket dal set dei monitorati
-        else if(ret == -3) {
+        if(ret == -2) { 
+            printf("Comando non valido.\n"); 
+        } else if(ret == -3) {  // se il comando era out allora tolgo il 
+                                // socket dal set dei monitorati
             disconnect_to(listener);
             FD_CLR(*sd, master);
             FD_CLR(*listener, master);
             
-            // faccio terminare l'io multiplexing e di conseguenza il device
             return -1;
-        }
-        
-        // in questo caso il destinatario non è online
-        // quindi i messaggi verranno salvati sul server
-        else if(ret == -4) {
-            
-            // cambio lo stato dell'utente
+        } else if(ret == -4) {  // in questo caso il destinatario non è online
+                                // quindi i messaggi verranno salvati sul server
             user->user_state = CHATTING_OFFLINE;
             
             // pulisco il buffer
@@ -61,10 +57,8 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
             printf("L'utente è offline, i messaggi verranno salvati sul server.\n> ");
             fflush(stdout);
             return 1;
-        }
-        
-        // in questo caso ret continene la porta del destinatario che è online
-        else if(ret > 0) {
+        } else if(ret > 0) {    // in questo caso ret continene 
+                                // la porta del destinatario
             // creo una nuova connessione con il destinatario
             ret = connect_to(p2p_sd, dst_addr, ret);
             FD_SET(*p2p_sd, master);
@@ -89,10 +83,9 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
         printCommands(*user);
     } else if(user->user_state == CHATTING_ONLINE || user->user_state == CHATTING_OFFLINE) {
         
-        // controllo se l'utente ha richiesto una chat di gruppo
+        // per prima cosa controllo se l'utente ha digitato un comando particolare:
+        // 1. controllo se l'utente ha richiesto una chat di gruppo
         if(!strncmp(buffer, "\\u", 2) && user->user_state == CHATTING_ONLINE) {
-            int num_online;
-            int j;
             
             // invio al server la richiesta di ricevere gli utenti online
             ret = send_TCP(sd, buffer);
@@ -114,26 +107,33 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
                 
                 // pulisco il buffer
                 memset(buffer, '\0', BUFFER_SIZE);
+                
+                // ricevo l'username dell'utente online
                 ret = receive_TCP(sd, buffer);
                 if(ret < 0) { printf("Impossibile ricevere utente"); return 1; }
             
+                // stampo l'username (togliendo l'username del device stesso)
                 len = (strlen(buffer) > strlen(user->my_username))? strlen(buffer):strlen(user->my_username);
                 if(!strncmp(buffer, user->my_username, len)) { return 1; }
                 else printf("%s\n", buffer);
             }
+
             printf("\nPer aggiungere un utente alla chat di gruppo digitare: \\a username + INVIO\n> ");
             fflush(stdout);
             return 1;
         } 
 
+        // 2. controllo se l'utente ha richiesto di aggiungere un membro al gruppo
         if(!strncmp(buffer, "\\a", 2) && user->user_state == CHATTING_ONLINE) {
             char* username;
             username = strtok(buffer, " ");
             username = strtok(NULL, " ");
             printf("%s\n", username);
+
+            return 1;
         }
         
-        // controllo se l'utente ha richiesto di terminare la chat
+        // 3. controllo se l'utente ha richiesto di terminare la chat
         if(!strncmp(buffer, "\\q", 2)) {
 
             if(user->user_state == CHATTING_ONLINE) {
@@ -141,10 +141,11 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
                 disconnect_to(p2p_sd);
                 FD_CLR(*p2p_sd, master);
             } else {
-                // comunico al server che il client ha chiuso la chat
+                // comunico al server che il client ha smesso di inviare messaggi
                 ret = send_TCP(sd, "\\q\0");
                 if(ret < 0) { return 2; }
             }
+            
             // libero la memoria allocata per l'username del destinatario
             free(user->dst_username);
             user->user_state = LOGGED;
@@ -152,9 +153,11 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
             return 1;
         }
         
-        // invio il messaggio al device o al server
+        // se ho passato i controlli allora l'utente ha scritto
+        // un messaggio da inviare al destinatario o al server
         if(user->user_state == CHATTING_ONLINE) {
-            // aggiungo l'username al messaggio 
+            
+            // aggiungo l'username al messaggio da inviare al device
             len = strlen(buffer) + strlen(user->my_username) + 3;
             message = malloc(len);
             snprintf(message, len, "%s: %s", user->my_username, buffer);
@@ -165,7 +168,8 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
             printf("*");
             fflush(stdout);
         } else {
-            // aggiungo le informazioni al messaggio
+            
+            // aggiungo le informazioni al messaggio da inviare al server
             len = strlen(buffer) + strlen(user->my_username) + strlen(user->dst_username) + 4;
             message = malloc(len);
             snprintf(message, len, "%s %s %s", user->my_username, user->dst_username, buffer);
@@ -183,7 +187,6 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
         
         // distruggo il messaggio 
         free(message);
-
     }  
     return 0; 
 }
