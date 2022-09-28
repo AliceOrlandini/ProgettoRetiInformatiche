@@ -252,7 +252,8 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* src_usern
     struct pendingMessage* elem;
     char* port;
     char dst_port[5];
-    int udp_sd;
+    int new_sd;
+    struct sockaddr_in dst_addr;
 
     if(*pending_message_list == NULL) {
         
@@ -310,7 +311,19 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* src_usern
     // in caso affermativo gli invio la notifica di avvenuta lettura dei messaggi
     // altrimenti mantengo l'informazione che verrà inviata quando tornerà online
     if(checkOnline(src_username, dst_port)) {
-        ret = send_UDP(&sd, atoi(port), "1");
+        ret = connect_to(&new_sd, &dst_addr, atoi(dst_port));
+        if(ret < 0) { printf("Impossibile connettersi al device\n"); }
+        else {
+            len = strlen(src_username) + 39;
+            message = malloc(len);
+            sprintf(message, "I messaggi inviati a %s sono stati letti", src_username);
+            ret = send_TCP(&new_sd, message);
+            if(ret < 0) { printf("Impossibile inviare il messaggio\n"); }
+            free(message);
+            disconnect_to(&new_sd);
+        }
+    } else {
+        
     }
 
     // ora che ho inviato tutti i messaggi elimino dalla lista e dal file

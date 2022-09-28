@@ -172,7 +172,7 @@ void ioMultiplexing(int listener, int* sd, char* buffer) {
                         free(message);
 
                     }  
-                } else {
+                } else if(i == p2p_sd) {
                     // pulisco il buffer
                     memset(buffer, '\0', BUFFER_SIZE);
                     ret = receive_TCP(&i, (char*)buffer);

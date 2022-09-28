@@ -1,2 +1,0 @@
-14:45:12 user1 user2 out
-15:40:21 user1 user2 Leon
