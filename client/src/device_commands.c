@@ -313,6 +313,35 @@ void out(int* sd, struct User* user) {
 }
 
 /*
+    Permette di ricevere le notifiche mentre si era offline.
+*/
+void receiveNotifications(int* sd, char* buffer) {
+    
+    int ret;
+    int num_notifications;
+    int i;
+
+    ret = receive_TCP(sd, buffer);
+    if(ret < 0) { printf("Impossibile ricevere le notifiche\n"); return; }
+
+    num_notifications = atoi(buffer);
+    if(num_notifications == 0) { return; }
+    else if(num_notifications == 1) { printf("Hai ricevuto %d notifica:\n", num_notifications); }
+    else { printf("Hai ricevuto %d notifiche:\n", num_notifications); }
+
+    // ricevo le notifiche
+    for(i = 0; i < num_notifications; i++) {
+        // pulisco il buffer
+        memset(buffer, '\0', BUFFER_SIZE);
+        
+        ret = receive_TCP(sd, buffer);
+        if(ret < 0) { printf("Impossibile ricevere la notifica\n"); continue; }
+
+        printf("%s\n", buffer);
+    }
+}
+
+/*
     A seconda del comando digitato dall'utente
     si esegue la funzione corrispondente.
 */

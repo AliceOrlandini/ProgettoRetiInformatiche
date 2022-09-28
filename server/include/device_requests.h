@@ -9,4 +9,6 @@ int chat(int*, char*);
 void out(char*);
 void saveMessage(char*);
 void delMessagesFromFile(char*, char*, int);
+void delNotificationsFromFile(char*, int);
+void sendNotifications(int*, char*);
 int serveDeviceRequest(int*, char*, char**, struct pendingMessage**);

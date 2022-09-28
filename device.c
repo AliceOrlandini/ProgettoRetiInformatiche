@@ -23,7 +23,6 @@ struct User user;
 */
 void ioMultiplexing(int listener, int* sd, char* buffer) {
     
-    int udp_sd;
     int p2p_sd;
     struct sockaddr_in src_addr;
     struct sockaddr_in dst_addr;
@@ -226,13 +225,13 @@ int main(int argc, char *argv[]) {
     ret = init_listener(&listener, &my_addr, atoi(user.my_port));
     if(ret < 0) { exit(0); }
 
-    // pulisco il buffer dei comandi
+    // pulisco il buffer
     memset(&buffer, '\0', BUFFER_SIZE);
 
     // stampo i comandi disponibili
     printCommands(user);
 
-    // finchè l'utente non si connette non faccio partire l'iomultiplexing 
+    // finchè l'utente non si connette non faccio partire l'io multiplexing 
     while(user.user_state == DISCONNECTED) {
         // prelievo il comando dallo standard input e lo salvo nel buffer
         read(STANDARD_INPUT, (void*)&buffer, BUFFER_SIZE);
@@ -243,13 +242,20 @@ int main(int argc, char *argv[]) {
         ret = executeDeviceCommand((char*)&buffer, &user, &sd, &server_addr);
         if(ret == -1) { printf("Comando non valido.\n"); }
         
-        // pulisco il buffer dei comandi
+        // pulisco il buffer
         memset(&buffer, '\0', BUFFER_SIZE);
 
         // stampo i comandi disponibili
         printCommands(user);
     }
 
+    // ricevo le notifiche mentre ero offline
+    receiveNotifications(&sd, (char*)&buffer);
+
+    // pulisco il buffer
+    memset(&buffer, '\0', BUFFER_SIZE);
+
+    // faccio partire l'io multiplexing
     ioMultiplexing(listener, &sd, (char*)&buffer);
     
     return 0;

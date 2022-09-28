@@ -254,6 +254,7 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* src_usern
     char dst_port[5];
     int new_sd;
     struct sockaddr_in dst_addr;
+    FILE* fp;
 
     if(*pending_message_list == NULL) {
         
@@ -283,15 +284,14 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* src_usern
     if(ret < 0) { printf("Impossibile eseguire hanging.\n"); free(message); return; }
     free(message);
 
-    if(num_messages == 0) {
-        return;
-    }
+    if(num_messages == 0) { return; }
 
     // invio al client tutti i messaggi ricevuti da src_username
     elem = *pending_message_list;
     while(elem != NULL) {
         username_len = (strlen(elem->username_src) > strlen(src_username))? strlen(elem->username_src):strlen(src_username);
         if(!strncmp(elem->username_src, src_username, username_len)) {
+            
             // creo il messaggio da inviare al client
             len = strlen(elem->timestamp) + strlen(elem->message) + 2;
             message = malloc(len);
@@ -314,16 +314,22 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* src_usern
         ret = connect_to(&new_sd, &dst_addr, atoi(dst_port));
         if(ret < 0) { printf("Impossibile connettersi al device\n"); }
         else {
-            len = strlen(src_username) + 39;
+            len = strlen(my_username) + 40;
             message = malloc(len);
-            sprintf(message, "I messaggi inviati a %s sono stati letti", src_username);
+            sprintf(message, "I messaggi inviati a %s sono stati letti!", my_username);
             ret = send_TCP(&new_sd, message);
             if(ret < 0) { printf("Impossibile inviare il messaggio\n"); }
             free(message);
             disconnect_to(&new_sd);
         }
     } else {
-        
+        fp = fopen("./server/files/notifications.txt", "a");
+        if(fp == NULL) { printf("Error0 impossibile aprire il file notifications.txt\n"); return; }
+
+        ret = fprintf(fp, "%s:I messaggi inviati a %s sono stati letti!\n", src_username, my_username);
+        if(ret < 0) { printf("Error1 impossibile salvare la notifica\n"); return; }
+
+        fclose(fp);
     }
 
     // ora che ho inviato tutti i messaggi elimino dalla lista e dal file
@@ -331,6 +337,75 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* src_usern
     delMessagesFromFile(src_username, my_username, num_messages);
     delMessagesFromPMList(pending_message_list, src_username);
     return;
+}
+
+/*
+    Scorre il file delle db_notifications.txt ed invia all'utente le sue notifiche.
+    Una volte inviate le elimina dal file.
+*/
+void sendNotifications(int* sd, char* my_username) {
+
+    FILE* fp;
+    char file_line[64];
+    char* username;
+    char* notification;
+    int username_len;
+    int num_notifications = 0;
+    char* message;
+    int ret;
+    int len;
+
+    fp = fopen("./server/files/db_notifications.txt", "r");
+    if(fp == NULL) { printf("Error0 sendNotifications\n"); return; }
+
+    // cerco il numero di notifiche inviate all'utente
+    while (fgets(file_line, sizeof(file_line), fp) != NULL) {
+        username = strtok(file_line, ":");
+        notification = strtok(NULL, "\n");
+
+        username_len = (strlen(username) > strlen(my_username))? strlen(username):strlen(my_username);
+        if(!strncmp(my_username, username, username_len)) {
+            num_notifications++;
+        }
+    } 
+
+    // invio il numero di notifiche ricevute
+    message = malloc(3);
+    sprintf(message, "%d", num_notifications);
+    ret = send_TCP(sd, message);
+    if(ret < 0) { printf("Impossibile inviare il numero di notifiche\n"); free(message); return; }
+    free(message);
+
+    if(num_notifications == 0) { return; }
+
+    // invio al client tutte le notifiche 
+    rewind(fp);
+    while (fgets(file_line, sizeof(file_line), fp) != NULL) {
+        username = strtok(file_line, ":");
+        notification = strtok(NULL, "\n");
+
+        username_len = (strlen(username) > strlen(my_username))? strlen(username):strlen(my_username);
+        if(!strncmp(my_username, username, username_len)) {
+            
+            // creo il messaggio da inviare al client
+            len = strlen(notification) + 1;
+            message = malloc(len);
+            snprintf(message, len, "%s", notification);
+
+            // invio il messaggio
+            ret = send_TCP(sd, message);
+            if(ret < 0) { printf("Impossibile inviare la notifica\n"); }
+            
+            // libero la memoria allocata per il messaggio
+            free(message);
+        }
+    } 
+
+    // chiudo il file
+    fclose(fp);
+    
+    // elimino le notifiche nel file
+    delNotificationsFromFile(username, num_notifications);
 }
 
 /*
@@ -483,8 +558,8 @@ void deleteLine(FILE *srcFile, FILE *tempFile, int* lines, int num_messages)
 }
 
 /*
-    Permette di eliminare dal file db_messages.txt i messaggi mandati da
-    src_username a dst_username.    
+    Permette di eliminare dal file db_messages.txt
+    i messaggi mandati da src_username a dst_username.    
 */
 void delMessagesFromFile(char* src_username, char* dst_username, int num_messages) {
 
@@ -543,6 +618,64 @@ void delMessagesFromFile(char* src_username, char* dst_username, int num_message
     // elimino srcFile e rinomino tempFile 
     remove("./server/files/db_messages.txt");
     rename("./server/files/delete-line.txt", "./server/files/db_messages.txt");
+    return;
+}
+
+/*
+    Permette di eliminare dal file db_notifications.txt 
+    le notifiche ricevute da username.    
+*/
+void delNotificationsFromFile(char* src_username, int num_notifications) {
+
+    FILE *srcFile;
+    FILE *tempFile;
+    int lines[num_notifications];
+    int line = 0;
+    int i = 0;
+    
+    int ret;
+    char file_line[BUFFER_SIZE];
+    char* username_src;
+    int username_src_len;
+
+    // inizializzo il vettore delle righe
+    for(i = 0; i < num_notifications; i++)
+        lines[i] = 0;
+    i = 0;
+
+    // apro i file
+    srcFile  = fopen("./server/files/db_notifications.txt", "r");
+    tempFile = fopen("./server/files/delete-line.txt", "w");
+    if(srcFile == NULL || tempFile == NULL) { printf("Error0 delMessages\n"); return; }
+
+    while(fgets(file_line, sizeof(file_line), srcFile) != NULL) {
+        
+        line++;
+
+        username_src = strtok(file_line, ":");
+
+        username_src_len = (strlen(src_username) > strlen(username_src))? strlen(src_username):strlen(username_src);
+
+        // controllo se ho trovato la notifica
+        if(!strncmp(src_username, username_src, username_src_len)) {
+            lines[i] = line;
+            i++;
+        }
+    }
+
+    // riavvolgo il file
+    rewind(srcFile);
+
+    // elimino le righe trovate
+    deleteLine(srcFile, tempFile, lines, num_notifications);
+
+    // chiudo i file
+    fclose(srcFile);
+    fclose(tempFile);
+
+    // elimino srcFile e rinomino tempFile 
+    remove("./server/files/db_notifications.txt");
+    rename("./server/files/delete-line.txt", "./server/files/db_notifications.txt");
     return;
 }
 

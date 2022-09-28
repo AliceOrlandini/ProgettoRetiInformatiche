@@ -90,8 +90,12 @@ void ioMultiplexing(int listener) {
                             if(ret < 0) { printf("Richiesta non valida\n"); continue; }
                             else if(ret == 1) { 
                                 username[strlen(username)] = '\0'; 
+                                
                                 // creo la lista dei messaggi pendenti
                                 createPMList(&pending_message_list, username);
+
+                                // invio le notifiche dei messaggi letti mentre era offline
+                                sendNotifications(&i, username);
                             } else if(ret == 2) { // in questo caso salvo i messaggi che arriano dal client
                                 while(1) {
                                     // inizializzo il buffer 
