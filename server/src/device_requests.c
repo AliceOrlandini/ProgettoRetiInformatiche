@@ -323,7 +323,7 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* src_usern
             disconnect_to(&new_sd);
         }
     } else {
-        fp = fopen("./server/files/notifications.txt", "a");
+        fp = fopen("./server/files/db_notifications.txt", "a");
         if(fp == NULL) { printf("Error0 impossibile aprire il file notifications.txt\n"); return; }
 
         ret = fprintf(fp, "%s:I messaggi inviati a %s sono stati letti!\n", src_username, my_username);
@@ -376,7 +376,7 @@ void sendNotifications(int* sd, char* my_username) {
     if(ret < 0) { printf("Impossibile inviare il numero di notifiche\n"); free(message); return; }
     free(message);
 
-    if(num_notifications == 0) { return; }
+    if(num_notifications == 0) { fclose(fp); return; }
 
     // invio al client tutte le notifiche 
     rewind(fp);
@@ -406,13 +406,6 @@ void sendNotifications(int* sd, char* my_username) {
     
     // elimino le notifiche nel file
     delNotificationsFromFile(username, num_notifications);
-}
-
-/*
-    Permette 
-*/
-void share() {
-
 }
 
 /*
@@ -539,8 +532,7 @@ void printFile(FILE *fptr) {
 /*
     Elimina le righe di un file specificate nel vettore lines.
 */
-void deleteLine(FILE *srcFile, FILE *tempFile, int* lines, int num_messages)
-{
+void deleteLine(FILE *srcFile, FILE *tempFile, int* lines, int num_messages) {
     char buffer[BUFFER_SIZE];
     int count = 1;
     int i;
@@ -680,6 +672,80 @@ void delNotificationsFromFile(char* src_username, int num_notifications) {
 }
 
 /*
+    Invia all'utente la lista degli online.
+*/
+void sendOnlineUsers(int* sd) {
+    
+    int ret;
+    FILE* fp;
+    char file_line[64];
+    char* username;
+    char* password;
+    char* port;
+    char* timestamp_login;
+    char* timestamp_logout;
+    int num_online = 0;
+    char* message;
+    int len;
+
+    fp = fopen("./server/files/db_users.txt", "r"); 
+    if(fp == NULL) { printf("Error0 chat\n"); return; }
+
+    // se l'utente è online allora avrà campo NULL nel file
+    while (fgets(file_line, sizeof(file_line), fp) != NULL) {
+        
+        username = strtok(file_line, " ");
+        password = strtok(NULL, " ");
+        port = strtok(NULL, " ");
+        timestamp_login = strtok(NULL, " ");
+        timestamp_logout = strtok(NULL, " ");
+
+        // controllo se il timestamp del logout è NULL
+        if(!strncmp(timestamp_logout, "NULL", 4)) {
+            num_online++;
+        }
+    }
+
+    // invio il numero di utenti online
+    message = malloc(3);
+    sprintf(message, "%d", num_online);
+    ret = send_TCP(sd, message);
+    if(ret < 0) { printf("Impossibile inviare il numero di utenti online\n"); free(message); return; }
+    free(message);
+
+    if(num_online == 0) { fclose(fp); return; }
+
+    // invio al client tutti gli utenti online 
+    rewind(fp);
+    while (fgets(file_line, sizeof(file_line), fp) != NULL) {
+        
+        username = strtok(file_line, " ");
+        password = strtok(NULL, " ");
+        port = strtok(NULL, " ");
+        timestamp_login = strtok(NULL, " ");
+        timestamp_logout = strtok(NULL, " ");
+
+        // controllo se il timestamp del logout è NULL
+        if(!strncmp(timestamp_logout, "NULL", 4)) {
+            
+            // creo il messaggio da inviare al client
+            len = strlen(username) + 1;
+            message = malloc(len);
+            snprintf(message, len, "%s", username);
+
+            // invio il messaggio
+            ret = send_TCP(sd, message);
+            if(ret < 0) { printf("Impossibile inviare la notifica\n"); }
+            
+            // libero la memoria allocata per il messaggio
+            free(message);
+        }
+    }
+
+    return;
+}
+
+/*
     Gestione della richiesta del device, a seconda
     del comando ricevuto si invoca la funzione corrispondente.
 */
@@ -735,8 +801,9 @@ int serveDeviceRequest(int* sd, char* request, char** username, struct pendingMe
         ret = chat(sd, dev_username);
         
         return ret;
-    } else if(!strncmp(command, "share", 5)) {
-        share();
+    } else if(!strncmp(command, "\\u", 2)) {
+        // invio la lista degli utenti online
+        sendOnlineUsers(sd);
     } else { return -1; }
     return 0;
 }

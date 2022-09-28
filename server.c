@@ -105,12 +105,14 @@ void ioMultiplexing(int listener) {
                                     ret = receive_TCP(&i, buffer);
                                     if(ret < 0) { out(username); delPMList(&pending_message_list); return; }
                                     
-                                    if(strncmp(buffer, "\\q", 2)) { 
-                                        // salvo il messaggio
+                                    // controllo se l'utente vuole terminare la chat
+                                    if(!strncmp(buffer, "\\q", 2)) { 
+                                        printf("Chat terminata con successo!\n"); break;
+                                    } else { 
+                                        // altrimenti salvo il messaggio
                                         saveMessage(buffer);
-                                        printf("Messaggio salvato con successo!\n"); 
+                                        printf("Messaggio salvato con successo!\n");  
                                     }
-                                    else { printf("Chat terminata con successo!\n"); break; }
                                 }
                             }
                         }

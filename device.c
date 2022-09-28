@@ -119,6 +119,42 @@ void ioMultiplexing(int listener, int* sd, char* buffer) {
                         printCommands(user);
                     } else if(user.user_state == CHATTING_ONLINE || user.user_state == CHATTING_OFFLINE) {
                         
+                        // controllo se l'utente ha richiesto una chat di gruppo
+                        if(!strncmp(buffer, "\\u", 2) && user.user_state == CHATTING_ONLINE) {
+                            int num_online;
+                            int j;
+                            
+                            // invio al server la richiesta di ricevere gli utenti online
+                            ret = send_TCP(sd, buffer);
+                            if(ret < 0) { printf("Impossibile ricevere la lista degli online"); continue; }
+
+                            // pulisco il buffer
+                            memset(buffer, '\0', BUFFER_SIZE);
+                            
+                            // ricevo il numero di utenti online
+                            ret = receive_TCP(sd, buffer);
+                            if(ret < 0) { printf("Impossibile ricevere la lista degli online"); continue; }
+                            
+                            num_online = atoi(buffer);
+                            // stampo la lista degli online
+                            printf("\nGli utenti online sono:\n");
+
+                            for(j = 0; j < num_online; j++) {
+                                
+                                // pulisco il buffer
+                                memset(buffer, '\0', BUFFER_SIZE);
+                                ret = receive_TCP(sd, buffer);
+                                if(ret < 0) { printf("Impossibile ricevere utente"); continue; }
+                            
+                                len = (strlen(buffer) > strlen(user.my_username))? strlen(buffer):strlen(user.my_username);
+                                if(!strncmp(buffer, user.my_username, len)) { continue; }
+                                else printf("%s\n", buffer);
+                            }
+                            printf("\nPer aggiungere un utente alla chat di gruppo digitare: \\a username + INVIO\n> ");
+                            fflush(stdout);
+                            continue;
+                        }
+                        
                         // controllo se l'utente ha richiesto di terminare la chat
                         if(!strncmp(buffer, "\\q", 2)) {
 
