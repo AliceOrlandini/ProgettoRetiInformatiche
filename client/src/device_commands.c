@@ -50,7 +50,7 @@ void delOnlineUserList(struct onlineUser** online_user_list) {
         free(*online_user_list);
         *online_user_list = del_user;
     }
-    printf("Lista dei messaggi pendenti eliminata con successo!\n");
+    printf("Lista degli utenti online con successo!\n");
 }
 
 void printOnlineUserList(struct onlineUser** online_user_list) {
@@ -118,7 +118,7 @@ char* getPortFromOnlineUserList(struct onlineUser** online_user_list, char* user
 
 
 
-void addElemToChattingWithList(struct usersChattingWith** users_chatting_with, char* username, int port, int p2p_sd) {
+void addElemToChattingWithList(struct usersChattingWith** users_chatting_with, char* username, in_port_t port, int p2p_sd) {
     
     // aggiungo il nuovo utente in coda alla lista
     struct usersChattingWith* new_user;
@@ -160,7 +160,7 @@ void delChattingWithList(struct usersChattingWith** users_chatting_with) {
         free(*users_chatting_with);
         *users_chatting_with = del_user;
     }
-    printf("Lista dei messaggi pendenti eliminata con successo!\n");
+    printf("Lista degli utenti con cui si sta chattando eliminata con successo!\n");
 }
 
 void printChattingWithList(struct usersChattingWith** users_chatting_with) {

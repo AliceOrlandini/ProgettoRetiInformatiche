@@ -61,7 +61,7 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
             // aggiungo questo utente alla lista di 
             // quelli con cui l'utente sta chattando
             addElemToChattingWithList(&user->users_chatting_with, user->dst_username, ret, *p2p_sd);
-            printChattingWithList(&user->users_chatting_with);
+            // printChattingWithList(&user->users_chatting_with);
 
             // cambio lo stato dell'utente
             user->user_state = CHATTING_ONLINE;
@@ -85,6 +85,9 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
         // per prima cosa controllo se l'utente ha digitato un comando particolare:
         // 1. controllo se l'utente ha richiesto una chat di gruppo
         if(!strncmp(buffer, "\\u", 2) && user->user_state == CHATTING_ONLINE) {
+
+            // distruggo la lista degli utenti online perchè verrà ricreata
+            delOnlineUserList(&online_user_list);
             
             // invio al server la richiesta di ricevere gli utenti online
             ret = send_TCP(sd, buffer);
@@ -117,15 +120,9 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
                 // stampo l'username (togliendo l'username del device stesso)
                 len = (strlen(username) > strlen(user->my_username))? strlen(username):strlen(user->my_username);
                 if(!strncmp(username, user->my_username, len)) { continue; }
-                
-                len = (strlen(username) > strlen(user->dst_username))? strlen(username):strlen(user->dst_username);
-                if(!strncmp(username, user->dst_username, len)) { 
-                    // stampo l'informazione che questo utente è già nel gruppo
-                    printf("%s (già nel gruppo)\n", username); 
-                } else if(!checkContacts(user->my_username, username)) {
-                    // se ho ricevuto un contatto non in rubrica non lo stampo
-                    continue;
-                } else {
+                // se ho ricevuto un contatto non in rubrica non lo stampo
+                if(!checkContacts(user->my_username, username)) { continue; } 
+                else {
                     // salvo in lista i dati dell'utente in modo da non dover
                     // ricontattare il server per aggiungerlo alla chat di gruppo
                     addElemToOnlineUserList(&online_user_list, username, port);
@@ -134,6 +131,9 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
                     printf("%s\n", username); 
                 }
             }
+
+            // pulisco il buffer
+            memset(buffer, '\0', BUFFER_SIZE);
             
             printf("\nPer aggiungere un utente alla chat di gruppo digitare: \\a username + INVIO\n> ");
             fflush(stdout);
@@ -142,7 +142,8 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
 
         // 2. controllo se l'utente ha richiesto di aggiungere un membro al gruppo
         if(!strncmp(buffer, "\\a", 2) && user->user_state == CHATTING_ONLINE) {
-            
+            int sd;
+            struct sockaddr_in cl_addr;
             username = strtok(buffer, " ");
             username = strtok(NULL, " ");
             
@@ -157,9 +158,10 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
             printf("La porta è %s\n> ", port);
             fflush(stdout);
 
-            // connect_to(sd, );
-            // addElemToChattingWithList(&online_user_list, username, atoi(port), sd);
-
+            connect_to(&sd, &cl_addr, atoi(port));
+            addElemToChattingWithList(&user->users_chatting_with, username, atoi(port), sd);
+            // free(cl_addr);
+            // devo anche mandare al nuovo utente le porte degli altri 
             return 1;
         }
         
@@ -271,6 +273,9 @@ void ioMultiplexing(int listener, int* sd, char* buffer) {
                         FD_SET(p2p_sd, &master);
                         if(p2p_sd > fdmax) { fdmax = p2p_sd; } 
                     }
+
+                    // aggiungo questo utente alla lista di quelli con cui si sta chattando
+                    addElemToChattingWithList(&user.users_chatting_with, "undefined", 0, p2p_sd);
 
                     // cambio lo stato dell'utente
                     user.user_state = CHATTING_ONLINE;

@@ -27,7 +27,7 @@ void printOnlineUserList(struct onlineUser**);
 void delUserFromOnlineUserList(struct onlineUser**, char*);
 char* getPortFromOnlineUserList(struct onlineUser**, char*);
 
-void addElemToChattingWithList(struct usersChattingWith**, char*, int, int);
+void addElemToChattingWithList(struct usersChattingWith**, char*, in_port_t, int);
 void delChattingWithList(struct usersChattingWith**);
 void printChattingWithList(struct usersChattingWith**);
 void delUserFromChattingWithList(struct usersChattingWith**, int);
