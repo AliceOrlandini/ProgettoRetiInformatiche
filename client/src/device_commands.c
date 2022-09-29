@@ -1,11 +1,228 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
 
 #include "./../include/device_commands.h"
 #include "./../include/device_consts.h"
 #include "./../../network/include/network.h"
+
+void addElemToOnlineUserList(struct onlineUser** online_user_list, char* username, char* port) {
+    
+    // aggiungo il nuovo utente in coda alla lista
+    struct onlineUser* new_user;
+    struct onlineUser* q;
+    struct onlineUser* p;
+    int len;
+
+    for(q = *online_user_list; q != NULL; q = q->next) {
+        p = q;
+    }
+    // inizializzo il nuovo utente
+    new_user = malloc(sizeof(struct onlineUser));
+
+    // inizializzo i dati del nuovo utente
+    len = strlen(username);
+    new_user->username = malloc(len + 1);
+    strncpy(new_user->username, username, len);
+    new_user->username[len] = '\0';
+
+    len = strlen(port);
+    new_user->port = malloc(len + 1);
+    strncpy(new_user->port, port, len);
+    new_user->port[len] = '\0';
+
+    new_user->next = NULL;
+    if(q == *online_user_list)
+        *online_user_list = new_user;
+    else 
+        p->next = new_user;
+
+    return;
+}
+
+void delOnlineUserList(struct onlineUser** online_user_list) {
+    
+    struct onlineUser *del_user;
+    while(*online_user_list != NULL) {
+        del_user = (*online_user_list)->next;
+        free((*online_user_list)->username);
+        free((*online_user_list)->port);
+        free(*online_user_list);
+        *online_user_list = del_user;
+    }
+    printf("Lista dei messaggi pendenti eliminata con successo!\n");
+}
+
+void printOnlineUserList(struct onlineUser** online_user_list) {
+    
+    if(*online_user_list == NULL) {
+        printf("\nLa lista è vuota.\n");
+        return;
+    }
+
+    struct onlineUser* elem = *online_user_list;
+    while(elem != NULL) {
+        printf("\nUSERNAME: %s\n", elem->username);
+        printf("PORT: %s\n", elem->port);
+        elem = elem->next;
+    }
+    printf("FINE\n");
+    return;
+}
+
+void delUserFromOnlineUserList(struct onlineUser** online_user_list, char* username) {
+    
+    int len;
+
+    if(*online_user_list == NULL) {
+        return;
+    }
+
+    len = (strlen((*online_user_list)->username) > strlen(username))? strlen((*online_user_list)->username):strlen(username);
+    if(!strncmp((*online_user_list)->username, username, len)) {
+        struct onlineUser* elem = *online_user_list;
+        *online_user_list = (*online_user_list)->next;
+        
+        // elimino la memoria allocata per il messaggio
+        free(elem->username);
+        free(elem->port);
+        // elimino la memoria allocata per la struttura
+        free(elem);
+
+        delUserFromOnlineUserList(online_user_list, username);
+    } else {
+        delUserFromOnlineUserList(&(*online_user_list)->next, username);
+    }
+}
+
+char* getPortFromOnlineUserList(struct onlineUser** online_user_list, char* username) {
+
+    int len;
+
+    if(*online_user_list == NULL) {
+        return NULL;
+    }
+
+    struct onlineUser* elem = *online_user_list;
+    while(elem != NULL) {
+        len = (strlen(username) > strlen(elem->username))? strlen(username):strlen(elem->username);
+        if(!strncmp(username, elem->username, len)) {
+            return elem->port;
+        }
+        elem = elem->next;
+    }
+
+    return NULL;
+}
+
+
+
+
+void addElemToChattingWithList(struct usersChattingWith** users_chatting_with, char* username, int port, int p2p_sd) {
+    
+    // aggiungo il nuovo utente in coda alla lista
+    struct usersChattingWith* new_user;
+    struct usersChattingWith* q;
+    struct usersChattingWith* p;
+    int len;
+
+    for(q = *users_chatting_with; q != NULL; q = q->next) {
+        p = q;
+    }
+    // inizializzo il nuovo utente
+    new_user = malloc(sizeof(struct usersChattingWith));
+
+    // inizializzo i dati del nuovo utente
+    len = strlen(username);
+    new_user->dst_username = malloc(len + 1);
+    strncpy(new_user->dst_username, username, len);
+    new_user->dst_username[len] = '\0';
+
+    new_user->port = port;
+
+    new_user->p2p_sd = p2p_sd;
+
+    new_user->next = NULL;
+    if(q == *users_chatting_with)
+        *users_chatting_with = new_user;
+    else 
+        p->next = new_user;
+
+    return;
+}
+
+void delChattingWithList(struct usersChattingWith** users_chatting_with) {
+    
+    struct usersChattingWith *del_user;
+    while(*users_chatting_with != NULL) {
+        del_user = (*users_chatting_with)->next;
+        free((*users_chatting_with)->dst_username);
+        free(*users_chatting_with);
+        *users_chatting_with = del_user;
+    }
+    printf("Lista dei messaggi pendenti eliminata con successo!\n");
+}
+
+void printChattingWithList(struct usersChattingWith** users_chatting_with) {
+    
+    if(*users_chatting_with == NULL) {
+        printf("\nLa lista è vuota.\n");
+        return;
+    }
+
+    struct usersChattingWith* elem = *users_chatting_with;
+    while(elem != NULL) {
+        printf("\nUSERNAME: %s\n", elem->dst_username);
+        printf("PORT: %d\n", elem->port);
+        elem = elem->next;
+    }
+    printf("FINE\n");
+    return;
+}
+
+void delUserFromChattingWithList(struct usersChattingWith** users_chatting_with, int p2p_sd) {
+    
+
+    if(*users_chatting_with == NULL) {
+        return;
+    }
+
+    if((*users_chatting_with)->p2p_sd == p2p_sd) {
+        struct usersChattingWith* elem = *users_chatting_with;
+        *users_chatting_with = (*users_chatting_with)->next;
+        
+        // elimino la memoria allocata per il messaggio
+        free(elem->dst_username);
+        // elimino la memoria allocata per la struttura
+        free(elem);
+
+        delUserFromChattingWithList(users_chatting_with, p2p_sd);
+    } else {
+        delUserFromChattingWithList(&(*users_chatting_with)->next, p2p_sd);
+    }
+}
+
+int sendMessageToAll(struct usersChattingWith** users_chatting_with, char* message) {
+    
+    int ret;
+    if(*users_chatting_with == NULL) {
+        printf("\nLa lista è vuota.\n");
+        return -1;
+    }
+
+    struct usersChattingWith* elem = *users_chatting_with;
+    while(elem != NULL) {
+        ret = send_TCP(&elem->p2p_sd, message);
+        if(ret < 0) { return -1; }
+        elem = elem->next;
+    }
+    printf("FINE\n");
+    return 0;
+}
+
+
+
+
 
 /*
     Stampa a video i comandi disponibili a 
@@ -198,18 +415,16 @@ void show(char* command, int* sd, char* username) {
 }
 
 /*
-    Avvia una chat con l'utente dst_username.
+    Verifica se dst_username è presente all'interno della
+    rubrica di my_username. 
 */
-int chat(char* command, int* sd, char* my_username, char* dst_username) {
-    
+bool checkContacts(char* my_username, char* dst_username) {
+
     int len;
-    int ret;
-    char message[1024]; 
     FILE* fp;
     char* file_path;
     char file_line[20];
     char* file_username;
-    bool found = false;
 
     // creo il path del file rubrica
     len = strlen(my_username) + 23;
@@ -231,14 +446,28 @@ int chat(char* command, int* sd, char* my_username, char* dst_username) {
         len = (strlen(dst_username) > strlen(file_username))? strlen(dst_username):strlen(file_username);
 
         if(!strncmp(file_username, dst_username, len)) {
-            found = true;
-            break;
+            return true;
         }
     }
 
     fclose(fp);
+    return false;
+}
+
+/*
+    Avvia una chat con l'utente dst_username.
+*/
+int chat(char* command, int* sd, char* my_username, char* dst_username) {
     
-    if(!found) { printf("Il contatto indicato non è in rubrica.\n"); return -1; }
+    int len;
+    int ret;
+    char message[1024]; 
+    
+    // controllo se il contatto è in rubrica
+    if(!checkContacts(my_username, dst_username)) { 
+        printf("Il contatto indicato non è in rubrica.\n"); 
+        return -1; 
+    }
 
     // unisco le tre stringhe per inviare al server un solo messaggio
     memset(&message, '\0', sizeof(message));
@@ -389,6 +618,9 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
             user->my_password = malloc(len + 1);
             strncpy(user->my_password, temp_password, len);
             user->my_password[len] = '\0';
+
+            // inizializzo la lista degli utenti con cui si sta chattando
+            user->users_chatting_with = NULL;
              
             ret = in(command, user, sd, server_addr);
             if(ret == 0) { user->user_state = LOGGED; }
@@ -419,6 +651,9 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
             strncpy(user->my_password, temp_password, len);
             user->my_password[len] = '\0';
 
+            // inizializzo la lista degli utenti con cui si sta chattando
+            user->users_chatting_with = NULL;
+
             ret = signup(command, user, sd, server_addr);
             if(ret == 0) { user->user_state = LOGGED; }
         
@@ -430,12 +665,12 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
             
             hanging(command, sd);
         } else if(!strncmp(command, "show", 4)) {
-            user->dst_username = strtok(NULL, " ");
+            temp_username = strtok(NULL, " ");
 
             // controllo che l'utente abbia inserito i dati
-            if(user->dst_username == NULL) { return -2; }
+            if(temp_username == NULL) { return -2; }
             
-            show(command, sd, user->dst_username);
+            show(command, sd, temp_username);
         } else if(!strncmp(command, "chat", 4)) {
             
             temp_username = strtok(NULL, " ");

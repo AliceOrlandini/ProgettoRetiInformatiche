@@ -16,15 +16,7 @@
     Struttura dati che conterrà i dati dell'utente.
 */
 struct User user;
-
-/*
-    Struttura con cui verrà realizzato il vettore 
-    degli utenti online.
-*/
-struct UsersOnline {
-    char* username;
-    int port;
-};
+struct onlineUser* online_user_list = NULL;
 
 int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p_sd, struct sockaddr_in* dst_addr, int* fdmax, char* buffer) {
 
@@ -33,6 +25,8 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
     int num_online;
     int j;
     char* message;
+    char* username;
+    char* port = NULL;
 
     if(user->user_state == LOGGED) {
         
@@ -63,7 +57,12 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
             ret = connect_to(p2p_sd, dst_addr, ret);
             FD_SET(*p2p_sd, master);
             if(*p2p_sd > *fdmax) { *fdmax = *p2p_sd; } 
-            
+
+            // aggiungo questo utente alla lista di 
+            // quelli con cui l'utente sta chattando
+            addElemToChattingWithList(&user->users_chatting_with, user->dst_username, ret, *p2p_sd);
+            printChattingWithList(&user->users_chatting_with);
+
             // cambio lo stato dell'utente
             user->user_state = CHATTING_ONLINE;
             
@@ -110,14 +109,32 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
                 
                 // ricevo l'username dell'utente online
                 ret = receive_TCP(sd, buffer);
-                if(ret < 0) { printf("Impossibile ricevere utente"); return 1; }
+                if(ret < 0) { printf("Impossibile ricevere utente"); continue; }
             
-                // stampo l'username (togliendo l'username del device stesso)
-                len = (strlen(buffer) > strlen(user->my_username))? strlen(buffer):strlen(user->my_username);
-                if(!strncmp(buffer, user->my_username, len)) { return 1; }
-                else printf("%s\n", buffer);
-            }
+                username = strtok(buffer, " ");
+                port = strtok(NULL, " ");
 
+                // stampo l'username (togliendo l'username del device stesso)
+                len = (strlen(username) > strlen(user->my_username))? strlen(username):strlen(user->my_username);
+                if(!strncmp(username, user->my_username, len)) { continue; }
+                
+                len = (strlen(username) > strlen(user->dst_username))? strlen(username):strlen(user->dst_username);
+                if(!strncmp(username, user->dst_username, len)) { 
+                    // stampo l'informazione che questo utente è già nel gruppo
+                    printf("%s (già nel gruppo)\n", username); 
+                } else if(!checkContacts(user->my_username, username)) {
+                    // se ho ricevuto un contatto non in rubrica non lo stampo
+                    continue;
+                } else {
+                    // salvo in lista i dati dell'utente in modo da non dover
+                    // ricontattare il server per aggiungerlo alla chat di gruppo
+                    addElemToOnlineUserList(&online_user_list, username, port);
+                    
+                    // stampo a video l'username dell'utente
+                    printf("%s\n", username); 
+                }
+            }
+            
             printf("\nPer aggiungere un utente alla chat di gruppo digitare: \\a username + INVIO\n> ");
             fflush(stdout);
             return 1;
@@ -125,10 +142,23 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
 
         // 2. controllo se l'utente ha richiesto di aggiungere un membro al gruppo
         if(!strncmp(buffer, "\\a", 2) && user->user_state == CHATTING_ONLINE) {
-            char* username;
+            
             username = strtok(buffer, " ");
             username = strtok(NULL, " ");
-            printf("%s\n", username);
+            
+            // recupero la porta di username 
+            port = getPortFromOnlineUserList(&online_user_list, username);
+            if(port == NULL) {
+                printf("Questo utente non può essere inserito nel gruppo.\n> ");
+                fflush(stdout);
+                return 1;
+            }
+
+            printf("La porta è %s\n> ", port);
+            fflush(stdout);
+
+            // connect_to(sd, );
+            // addElemToChattingWithList(&online_user_list, username, atoi(port), sd);
 
             return 1;
         }
@@ -140,6 +170,12 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
                 // eseguo la disconnessione dal destinatario
                 disconnect_to(p2p_sd);
                 FD_CLR(*p2p_sd, master);
+                
+                // distruggo la lista degli utenti online
+                delOnlineUserList(&online_user_list);
+
+                // distruggo la lista degli utenti con cui si sta chattando
+                delChattingWithList(&user->users_chatting_with);
             } else {
                 // comunico al server che il client ha smesso di inviare messaggi
                 ret = send_TCP(sd, "\\q\0");
@@ -163,7 +199,8 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
             snprintf(message, len, "%s: %s", user->my_username, buffer);
             
             // invio il messaggio
-            ret = send_TCP(p2p_sd, message);
+            ret = sendMessageToAll(&user->users_chatting_with, message);
+            // ret = send_TCP(p2p_sd, message);
             if(ret < 0) { return 1; }
             printf("*");
             fflush(stdout);
@@ -254,7 +291,7 @@ void ioMultiplexing(int listener, int* sd, char* buffer) {
                     else if(ret == 1) { continue; }
                     else if(ret == 2) { break; }
                     
-                } else if(i == p2p_sd) {
+                } else {
                     
                     // pulisco il buffer
                     memset(buffer, '\0', BUFFER_SIZE);
@@ -272,6 +309,9 @@ void ioMultiplexing(int listener, int* sd, char* buffer) {
                         
                         // pulisco il buffer
                         memset(buffer, '\0', BUFFER_SIZE);
+
+                        // elimino questo elemento dalla lista di quelli con cui si sta chattando
+                        delUserFromChattingWithList(&user.users_chatting_with, i);
                         continue;
                     }
                     

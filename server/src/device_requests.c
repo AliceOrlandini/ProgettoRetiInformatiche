@@ -729,9 +729,9 @@ void sendOnlineUsers(int* sd) {
         if(!strncmp(timestamp_logout, "NULL", 4)) {
             
             // creo il messaggio da inviare al client
-            len = strlen(username) + 1;
+            len = strlen(username) + strlen(port) + 2;
             message = malloc(len);
-            snprintf(message, len, "%s", username);
+            snprintf(message, len, "%s %s", username, port);
 
             // invio il messaggio
             ret = send_TCP(sd, message);

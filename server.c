@@ -45,6 +45,7 @@ void ioMultiplexing(int listener) {
         for(i = 0; i <= fdmax; i++) {
             if(FD_ISSET(i, &read_fds)) {
                 if(i == listener) { 
+                    
                     // accetto la nuova richiesta di connessione
                     new_sd = accept(listener, (struct sockaddr*)&client_addr, (socklen_t*)&addrlen);
                     if(new_sd < 0) { perror("Error0 accept"); }
@@ -60,6 +61,7 @@ void ioMultiplexing(int listener) {
                     
                     // eseguo l'azione prevista dal comando
                     executeServerCommand((char*)&buffer, &listener);
+                
                 } else { 
 
                     pid = fork();
@@ -71,6 +73,7 @@ void ioMultiplexing(int listener) {
                         struct pendingMessage* pending_message_list = NULL;
 
                         while(1) {
+
                             // inizializzo il buffer 
                             memset(&buffer, '\0', BUFFER_SIZE);
                             
@@ -96,8 +99,10 @@ void ioMultiplexing(int listener) {
 
                                 // invio le notifiche dei messaggi letti mentre era offline
                                 sendNotifications(&i, username);
+
                             } else if(ret == 2) { // in questo caso salvo i messaggi che arriano dal client
                                 while(1) {
+                                    
                                     // inizializzo il buffer 
                                     memset(&buffer, '\0', BUFFER_SIZE);
 
@@ -126,6 +131,7 @@ void ioMultiplexing(int listener) {
                         // termino il processo figlio
                         exit(0);
                     } else { // sono nel processo padre
+                        
                         // chiudo il socket di comunicazione
                         close(i);
                         // tolgo il descrittore del socket di comunicazione dal set dei monitorati
