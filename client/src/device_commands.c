@@ -259,7 +259,40 @@ void addNewConnToChattingWithList(struct usersChattingWith** users_chatting_with
     return;
 }
 
+void delAllConnFromChattingWithList(struct usersChattingWith** users_chatting_with, fd_set* master) {
 
+    if(*users_chatting_with == NULL) {
+        printf("\nLa lista è vuota.\n");
+        return;
+    }
+
+    struct usersChattingWith* elem = *users_chatting_with;
+    while(elem != NULL) {
+        disconnect_to(&elem->p2p_sd);
+        FD_CLR(elem->p2p_sd, master);
+        elem = elem->next;
+    }
+    return;
+}
+
+void delConnFromChattingWithList(struct usersChattingWith** users_chatting_with, int* sd, fd_set* master) {
+
+    if(*users_chatting_with == NULL) {
+        printf("\nLa lista è vuota.\n");
+        return;
+    }
+
+    struct usersChattingWith* elem = *users_chatting_with;
+    while(elem != NULL) {
+        if(elem->p2p_sd == *sd) {
+            disconnect_to(&elem->p2p_sd);
+            FD_CLR(elem->p2p_sd, master);
+            return;
+        }
+        elem = elem->next;
+    }
+    return;
+}
 
 
 /*
@@ -279,7 +312,7 @@ void printCommands(struct User user) {
     Permette a un utente di creare un account sul server, 
     caratterizzato da username e password.
 */
-int signup(char* command, struct User* user, int* sd, struct sockaddr_in* server_addr) {
+int signup(char* command, struct User* user, int* server_sd, struct sockaddr_in* server_addr) {
 
     int len;
     int ret;
@@ -291,15 +324,15 @@ int signup(char* command, struct User* user, int* sd, struct sockaddr_in* server
     snprintf(message, len, "%s %s %s %s", command, user->my_username, user->my_password, user->srv_port);
 
     // stabilisco la connessione con il server
-    ret = connect_to(sd, server_addr, SERVER_PORT);
+    ret = connect_to(server_sd, server_addr, SERVER_PORT);
     if(ret < 0) { printf("Impossibile connettersi al server.\n"); return -1; }
     
     // invio al server il messaggio
-    ret = send_TCP(sd, message);
+    ret = send_TCP(server_sd, message);
     if(ret < 0) { printf("Impossibile eseguire la registrazione.\n"); free(message); return -1; }
 
     // aspetto che il server mi comunichi che la registrazione è avvenuta con successo
-    ret = receive_TCP(sd, message); 
+    ret = receive_TCP(server_sd, message); 
     if(strncmp(message, "ok", 2)) {
         printf("Impossibile eseguire la registrazione.\n"); free(message); return -1;
     }
@@ -315,7 +348,7 @@ int signup(char* command, struct User* user, int* sd, struct sockaddr_in* server
     Permette al device di richiedere al 
     server la connessione al servizio.
 */
-int in(char* command, struct User* user, int* sd, struct sockaddr_in* server_addr) {
+int in(char* command, struct User* user, int* server_sd, struct sockaddr_in* server_addr) {
     
     int len;
     int ret;
@@ -327,21 +360,21 @@ int in(char* command, struct User* user, int* sd, struct sockaddr_in* server_add
     snprintf(message, len, "%s %s %s", command, user->my_username, user->my_password);
 
     // stabilisco la connessione con il server
-    ret = connect_to(sd, server_addr, atoi(user->srv_port));
+    ret = connect_to(server_sd, server_addr, atoi(user->srv_port));
     if(ret < 0) { printf("Impossibile connettersi al server.\n"); return -1; }
     
     // invio al server il messaggio
-    ret = send_TCP(sd, message);
+    ret = send_TCP(server_sd, message);
     if(ret < 0) { printf("Errore nell'invio del messaggio al server.\n"); free(message); return -1; }
 
     // aspetto che il server mi comunichi che il login è avvenuto con successo
-    ret = receive_TCP(sd, message); 
+    ret = receive_TCP(server_sd, message); 
     if(ret < 0) { printf("Errore nella ricezione del messaggio dal server.\n"); free(message); return -1; }
 
     if(!strncmp(message, "no", 2)) {
         
         // l'operazione non è andata a buon fine quindi mi disconnetto dal server
-        disconnect_to(sd); 
+        disconnect_to(server_sd); 
         free(message); 
         printf("Username o password non validi.\n");
 
@@ -563,12 +596,12 @@ void share(char* command, int* sd, char* file_name) {
 /*
     Permette al device di disconnettersi dal server.
 */
-void out(int* sd, struct User* user) {
+void out(int* server_sd, struct User* user) {
     
     int ret;
     
     // invio la richiesta di disconnessione
-    ret = disconnect_to(sd);
+    ret = disconnect_to(server_sd);
     if(ret == -1) { printf("Impossibile disconnettersi.\n"); }
     printf("Disconnessione avvenuta con successo!\n");
 
@@ -691,7 +724,6 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
 
             // inizializzo la lista degli utenti con cui si sta chattando
             user->users_chatting_with = NULL;
-            // user->users_chatting_with->addr = NULL;
 
             ret = signup(command, user, sd, server_addr);
             if(ret == 0) { user->user_state = LOGGED; }

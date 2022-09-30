@@ -45,7 +45,7 @@ int connect_to(int* sd, struct sockaddr_in* server_addr, in_port_t srv_port) {
     
     *sd = socket(AF_INET, SOCK_STREAM, 0);
     if(*sd < 0) { perror("Error0 connect_to"); return -1; }
-    
+
     memset(server_addr, 0, sizeof(*server_addr));
     server_addr->sin_family = AF_INET;
     server_addr->sin_port = htons(srv_port);
@@ -139,6 +139,7 @@ int send_UDP(int* sd, in_port_t port, char* message) {
     close(*sd);
     return 0;
 */
+return 0;
 }
 
 int receive_UDP(int* sd, in_port_t port, struct sockaddr_in* my_addr, char* message) {
@@ -162,6 +163,7 @@ int receive_UDP(int* sd, in_port_t port, struct sockaddr_in* my_addr, char* mess
     // ricevo i dati
     len = recvfrom(*sd, message, sizeof(message), 0, (struct sockaddr*)&addr, &addrlen);
 */
+return 0;
 }
 
 /*

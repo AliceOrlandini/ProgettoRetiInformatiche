@@ -1,5 +1,6 @@
 #include <arpa/inet.h>
 #include <stdbool.h>
+#include <sys/types.h>
 #include "user.h"
 
 struct onlineUser {
@@ -33,3 +34,5 @@ void printChattingWithList(struct usersChattingWith**);
 void delUserFromChattingWithList(struct usersChattingWith**, int);
 int sendMessageToAll(struct usersChattingWith**, char*);
 void addNewConnToChattingWithList(struct usersChattingWith**, char*, in_port_t, int*);
+void delAllConnFromChattingWithList(struct usersChattingWith**, fd_set*);
+void delConnFromChattingWithList(struct usersChattingWith**, int*, fd_set*);

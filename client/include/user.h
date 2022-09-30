@@ -14,6 +14,6 @@ struct User {
     char* my_password;
     char* my_port;
     char* srv_port;
-    char* dst_username; // DA TOGLIERE
+    char* dst_username;
     struct usersChattingWith* users_chatting_with;
 }; 
