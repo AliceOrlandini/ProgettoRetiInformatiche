@@ -6,6 +6,295 @@
 #include "./../include/device_consts.h"
 #include "./../../network/include/network.h"
 
+void addElemToOnlineUserList(struct onlineUser** online_user_list, char* username, char* port) {
+    
+    // aggiungo il nuovo utente in coda alla lista
+    struct onlineUser* new_user;
+    struct onlineUser* q;
+    struct onlineUser* p;
+    int len;
+
+    for(q = *online_user_list; q != NULL; q = q->next) {
+        p = q;
+    }
+    // inizializzo il nuovo utente
+    new_user = malloc(sizeof(struct onlineUser));
+
+    // inizializzo i dati del nuovo utente
+    len = strlen(username);
+    new_user->username = malloc(len + 1);
+    strncpy(new_user->username, username, len);
+    new_user->username[len] = '\0';
+
+    len = strlen(port);
+    new_user->port = malloc(len + 1);
+    strncpy(new_user->port, port, len);
+    new_user->port[len] = '\0';
+
+    new_user->next = NULL;
+    if(q == *online_user_list)
+        *online_user_list = new_user;
+    else 
+        p->next = new_user;
+
+    return;
+}
+
+void delOnlineUserList(struct onlineUser** online_user_list) {
+    
+    struct onlineUser *del_user;
+    while(*online_user_list != NULL) {
+        del_user = (*online_user_list)->next;
+        free((*online_user_list)->username);
+        free((*online_user_list)->port);
+        free(*online_user_list);
+        *online_user_list = del_user;
+    }
+    printf("Lista degli utenti online con successo!\n");
+}
+
+void printOnlineUserList(struct onlineUser** online_user_list) {
+    
+    if(*online_user_list == NULL) {
+        printf("\nLa lista è vuota.\n");
+        return;
+    }
+
+    struct onlineUser* elem = *online_user_list;
+    while(elem != NULL) {
+        printf("\nUSERNAME: %s\n", elem->username);
+        printf("PORT: %s\n", elem->port);
+        elem = elem->next;
+    }
+    printf("FINE\n");
+    return;
+}
+
+void delUserFromOnlineUserList(struct onlineUser** online_user_list, char* username) {
+    
+    int len;
+
+    if(*online_user_list == NULL) {
+        return;
+    }
+
+    len = (strlen((*online_user_list)->username) > strlen(username))? strlen((*online_user_list)->username):strlen(username);
+    if(!strncmp((*online_user_list)->username, username, len)) {
+        struct onlineUser* elem = *online_user_list;
+        *online_user_list = (*online_user_list)->next;
+        
+        // elimino la memoria allocata per il messaggio
+        free(elem->username);
+        free(elem->port);
+        // elimino la memoria allocata per la struttura
+        free(elem);
+
+        delUserFromOnlineUserList(online_user_list, username);
+    } else {
+        delUserFromOnlineUserList(&(*online_user_list)->next, username);
+    }
+}
+
+char* getPortFromOnlineUserList(struct onlineUser** online_user_list, char* username) {
+
+    int len;
+
+    if(*online_user_list == NULL) {
+        return NULL;
+    }
+
+    struct onlineUser* elem = *online_user_list;
+    while(elem != NULL) {
+        len = (strlen(username) > strlen(elem->username))? strlen(username):strlen(elem->username);
+        if(!strncmp(username, elem->username, len)) {
+            return elem->port;
+        }
+        elem = elem->next;
+    }
+
+    return NULL;
+}
+
+
+
+
+void addElemToChattingWithList(struct usersChattingWith** users_chatting_with, char* username, in_port_t port, int p2p_sd) {
+    
+    // aggiungo il nuovo utente in coda alla lista
+    struct usersChattingWith* new_user;
+    struct usersChattingWith* q;
+    struct usersChattingWith* p;
+    int len;
+
+    for(q = *users_chatting_with; q != NULL; q = q->next) {
+        p = q;
+    }
+    // inizializzo il nuovo utente
+    new_user = malloc(sizeof(struct usersChattingWith));
+
+    // inizializzo i dati del nuovo utente
+    len = strlen(username);
+    new_user->dst_username = malloc(len + 1);
+    strncpy(new_user->dst_username, username, len);
+    new_user->dst_username[len] = '\0';
+
+    // new_user->addr = NULL;
+
+    new_user->port = port;
+
+    new_user->p2p_sd = p2p_sd;
+
+    new_user->next = NULL;
+    if(q == *users_chatting_with)
+        *users_chatting_with = new_user;
+    else 
+        p->next = new_user;
+
+    return;
+}
+
+void delChattingWithList(struct usersChattingWith** users_chatting_with) {
+    
+    struct usersChattingWith *del_user;
+    while(*users_chatting_with != NULL) {
+        del_user = (*users_chatting_with)->next;
+        free((*users_chatting_with)->dst_username);
+        // if(&(*users_chatting_with)->addr != NULL)
+            // free(&(*users_chatting_with)->addr);
+        free(*users_chatting_with);
+        *users_chatting_with = del_user;
+    }
+    printf("Lista degli utenti con cui si sta chattando eliminata con successo!\n");
+}
+
+void printChattingWithList(struct usersChattingWith** users_chatting_with) {
+    
+    if(*users_chatting_with == NULL) {
+        printf("\nLa lista è vuota.\n");
+        return;
+    }
+
+    struct usersChattingWith* elem = *users_chatting_with;
+    while(elem != NULL) {
+        printf("\nUSERNAME: %s\n", elem->dst_username);
+        printf("PORT: %d\n", elem->port);
+        elem = elem->next;
+    }
+    printf("FINE\n");
+    return;
+}
+
+void delUserFromChattingWithList(struct usersChattingWith** users_chatting_with, int p2p_sd) {
+    
+
+    if(*users_chatting_with == NULL) {
+        return;
+    }
+
+    if((*users_chatting_with)->p2p_sd == p2p_sd) {
+        struct usersChattingWith* elem = *users_chatting_with;
+        *users_chatting_with = (*users_chatting_with)->next;
+        // elimino la memoria allocata per l'indirizzo
+        // if(&elem->addr != NULL)
+            // free(&elem->addr);
+        // elimino la memoria allocata per il messaggio
+        free(elem->dst_username);
+        // elimino la memoria allocata per la struttura
+        free(elem);
+
+        delUserFromChattingWithList(users_chatting_with, p2p_sd);
+    } else {
+        delUserFromChattingWithList(&(*users_chatting_with)->next, p2p_sd);
+    }
+}
+
+int sendMessageToAll(struct usersChattingWith** users_chatting_with, char* message) {
+    
+    int ret;
+    if(*users_chatting_with == NULL) {
+        printf("\nLa lista è vuota.\n");
+        return -1;
+    }
+
+    struct usersChattingWith* elem = *users_chatting_with;
+    while(elem != NULL) {
+        ret = send_TCP(&elem->p2p_sd, message);
+        if(ret < 0) { return -1; }
+        elem = elem->next;
+    }
+    // printf("FINE\n");
+    return 0;
+}
+
+void addNewConnToChattingWithList(struct usersChattingWith** users_chatting_with, char* username, in_port_t port, int* sd) {
+    // aggiungo il nuovo utente in coda alla lista
+    struct usersChattingWith* new_user;
+    struct usersChattingWith* q;
+    struct usersChattingWith* p;
+    int len;
+    int ret;
+
+    for(q = *users_chatting_with; q != NULL; q = q->next) {
+        p = q;
+    }
+    // inizializzo il nuovo utente
+    new_user = malloc(sizeof(struct usersChattingWith));
+
+    // inizializzo i dati del nuovo utente
+    len = strlen(username);
+    new_user->dst_username = malloc(len + 1);
+    strncpy(new_user->dst_username, username, len);
+    new_user->dst_username[len] = '\0';
+
+    new_user->port = port;
+    ret = connect_to(&new_user->p2p_sd, &new_user->addr, port);
+    *sd = new_user->p2p_sd;
+
+    new_user->next = NULL;
+    if(q == *users_chatting_with)
+        *users_chatting_with = new_user;
+    else 
+        p->next = new_user;
+
+    return;
+}
+
+void delAllConnFromChattingWithList(struct usersChattingWith** users_chatting_with, fd_set* master) {
+
+    if(*users_chatting_with == NULL) {
+        printf("\nLa lista è vuota.\n");
+        return;
+    }
+
+    struct usersChattingWith* elem = *users_chatting_with;
+    while(elem != NULL) {
+        disconnect_to(&elem->p2p_sd);
+        FD_CLR(elem->p2p_sd, master);
+        elem = elem->next;
+    }
+    return;
+}
+
+void delConnFromChattingWithList(struct usersChattingWith** users_chatting_with, int* sd, fd_set* master) {
+
+    if(*users_chatting_with == NULL) {
+        printf("\nLa lista è vuota.\n");
+        return;
+    }
+
+    struct usersChattingWith* elem = *users_chatting_with;
+    while(elem != NULL) {
+        if(elem->p2p_sd == *sd) {
+            disconnect_to(&elem->p2p_sd);
+            FD_CLR(elem->p2p_sd, master);
+            return;
+        }
+        elem = elem->next;
+    }
+    return;
+}
+
+
 /*
     Stampa a video i comandi disponibili a 
     seconda dello stato dell'utente.
@@ -15,7 +304,7 @@ void printCommands(struct User user) {
     if(user.user_state != LOGGED) {
         printf("1) in     --> per accedere al servizio.\n2) signup --> per creare un account.\n");
     } else if(user.user_state == LOGGED) {
-        printf("1) hanging --> per ricevere i messaggi mentre si era offline.\n2) show    --> per ricevere i messaggi pendenti dall'utente specificato.\n3) chat    --> per chattare con un altro utente.\n4) share   --> per condividere un file.\n5) out     --> per disconnettersi.\n");
+        printf("1) hanging --> stampa il numero di messaggi ricevuti mentre si era offline.\n2) show    --> per ricevere i messaggi pendenti dall'utente specificato.\n3) chat    --> per chattare con un altro utente.\n4) share   --> per condividere un file.\n5) out     --> per disconnettersi.\n");
     }
 }
 
@@ -23,27 +312,27 @@ void printCommands(struct User user) {
     Permette a un utente di creare un account sul server, 
     caratterizzato da username e password.
 */
-int signup(char* command, char* username, char* password, char* port, int* sd, struct sockaddr_in* server_addr) {
+int signup(char* command, struct User* user, int* server_sd, struct sockaddr_in* server_addr) {
 
     int len;
     int ret;
     char* message; 
     
     // unisco le tre stringhe per inviare un solo messaggio
-    len = strlen(command) + strlen(username) + strlen(password) + strlen(port) + 4;
+    len = strlen(command) + strlen(user->my_username) + strlen(user->my_password) + strlen(user->srv_port) + 4;
     message = malloc(len);
-    snprintf(message, len, "%s %s %s %s", command, username, password, port);
+    snprintf(message, len, "%s %s %s %s", command, user->my_username, user->my_password, user->srv_port);
 
     // stabilisco la connessione con il server
-    ret = connect_to_server(sd, server_addr, SERVER_PORT);
+    ret = connect_to(server_sd, server_addr, SERVER_PORT);
     if(ret < 0) { printf("Impossibile connettersi al server.\n"); return -1; }
     
     // invio al server il messaggio
-    ret = send_TCP(sd, message);
+    ret = send_TCP(server_sd, message);
     if(ret < 0) { printf("Impossibile eseguire la registrazione.\n"); free(message); return -1; }
 
     // aspetto che il server mi comunichi che la registrazione è avvenuta con successo
-    ret = receive_TCP(sd, message); 
+    ret = receive_TCP(server_sd, message); 
     if(strncmp(message, "ok", 2)) {
         printf("Impossibile eseguire la registrazione.\n"); free(message); return -1;
     }
@@ -59,33 +348,33 @@ int signup(char* command, char* username, char* password, char* port, int* sd, s
     Permette al device di richiedere al 
     server la connessione al servizio.
 */
-int in(char* command, char* username, char* password, char* srv_port, int* sd, struct sockaddr_in* server_addr) {
+int in(char* command, struct User* user, int* server_sd, struct sockaddr_in* server_addr) {
     
     int len;
     int ret;
     char* message; 
 
     // unisco le tre stringhe per inviare un solo messaggio
-    len = strlen(command) + strlen(username) + strlen(password) + 3;
+    len = strlen(command) + strlen(user->my_username) + strlen(user->my_password) + 3;
     message = malloc(len);
-    snprintf(message, len, "%s %s %s", command, username, password);
+    snprintf(message, len, "%s %s %s", command, user->my_username, user->my_password);
 
     // stabilisco la connessione con il server
-    ret = connect_to_server(sd, server_addr, atoi(srv_port));
+    ret = connect_to(server_sd, server_addr, atoi(user->srv_port));
     if(ret < 0) { printf("Impossibile connettersi al server.\n"); return -1; }
     
     // invio al server il messaggio
-    ret = send_TCP(sd, message);
+    ret = send_TCP(server_sd, message);
     if(ret < 0) { printf("Errore nell'invio del messaggio al server.\n"); free(message); return -1; }
 
     // aspetto che il server mi comunichi che il login è avvenuto con successo
-    ret = receive_TCP(sd, message); 
+    ret = receive_TCP(server_sd, message); 
     if(ret < 0) { printf("Errore nella ricezione del messaggio dal server.\n"); free(message); return -1; }
 
     if(!strncmp(message, "no", 2)) {
         
         // l'operazione non è andata a buon fine quindi mi disconnetto dal server
-        disconnect_to_server(sd); 
+        disconnect_to(server_sd); 
         free(message); 
         printf("Username o password non validi.\n");
 
@@ -100,17 +389,46 @@ int in(char* command, char* username, char* password, char* srv_port, int* sd, s
 
 /*
     Permette all'utente di ricevere la lista degli utenti 
-    chi gli hanno inviato messaggi mentre era offline.
+    che gli hanno inviato messaggi mentre era offline.
+    Per ogni utente il comando mostra username, il numero di
+    messaggi pendenti in ingresso e il timestamp del più recente.
 */
 void hanging(char* command, int* sd) {
     
     int ret;
+    char buffer[BUFFER_SIZE];
+    int num_users;
+    int i;
 
-    // invio al server il messaggio
+    // invio al server il comando
     ret = send_TCP(sd, command);
     if(ret < 0) { printf("Impossibile eseguire hanging.\n"); return; }
 
-    printf("Hanging avvenuta con successo!\n");
+    memset(&buffer, '\0', BUFFER_SIZE);
+
+    // ricevo dal server il numero di utenti che hanno inviato messaggi
+    ret = receive_TCP(sd, buffer);
+    if(ret < 0) { printf("Impossibile eseguire hanging.\n"); return; }
+    num_users = atoi(buffer);
+    if(num_users == 0) {
+        printf("\nNessuno ha inviato messaggi.\n");
+        return;
+    }
+
+    printf("\nGli utenti che hanno mandato messaggi sono:\n");
+
+    // ricevo dal server tutte le info sui messaggi inviati
+    for(i = 0; i < num_users; i++) {
+        
+        memset(&buffer, '\0', BUFFER_SIZE);
+        
+        ret = receive_TCP(sd, buffer);
+        if(ret < 0) { printf("Hanging: errore nella ricezione di una riga.\n"); continue; }
+        
+        // stampo le info
+        printf("%d. %s\n", i + 1, buffer);
+    }
+
     return;
 }
 
@@ -122,7 +440,10 @@ void show(char* command, int* sd, char* username) {
     
     int len;
     int ret;
+    int num_messages;
+    int i;
     char* message; 
+    char buffer[BUFFER_SIZE];
 
     // unisco le tre stringhe per inviare un solo messaggio
     len = strlen(command) + strlen(username) + 2; // il +2 serve per gli spazi
@@ -136,33 +457,114 @@ void show(char* command, int* sd, char* username) {
     // libero la memoria utilizzata per il messaggio
     free(message);
 
-    printf("Show inviata con successo!\n");
+    memset(&buffer, '\0', BUFFER_SIZE);
+
+    // ricevo dal server il numero di messaggi ricevuti
+    ret = receive_TCP(sd, buffer);
+    if(ret < 0) { printf("Impossibile eseguire hanging.\n"); return; }
+    num_messages = atoi(buffer);
+    if(num_messages == 0) {
+        printf("\nQuesto utente non ha inviato messaggi.\n");
+        return;
+    }
+
+    printf("\nI messaggi ricevuti sono:\n");
+
+    // ricevo dal server tutte le info sui messaggi inviati
+    for(i = 0; i < num_messages; i++) {
+        
+        memset(&buffer, '\0', BUFFER_SIZE);
+        
+        ret = receive_TCP(sd, buffer);
+        if(ret < 0) { printf("Show: errore nella ricezione del messaggio.\n"); continue; }
+        
+        // stampo il messaggio
+        printf("%s\n", buffer);
+    }
+
     return;
 }
 
 /*
-    Avvia una chat con l'utente username.
+    Verifica se dst_username è presente all'interno della
+    rubrica di my_username. 
 */
-void chat(char* command, int* sd, char* username) {
+bool checkContacts(char* my_username, char* dst_username) {
+
+    int len;
+    FILE* fp;
+    char* file_path;
+    char file_line[20];
+    char* file_username;
+
+    // creo il path del file rubrica
+    len = strlen(my_username) + 23;
+    file_path = malloc(len);
+    strncpy(file_path, "./client/contacts/", 18);
+    strncat(file_path, my_username, len);
+    strcat(file_path, ".txt");
+    file_path[len - 1] = '\0';
+
+    // apro la rubrica
+    fp = fopen(file_path, "r");
+    if(fp == NULL) { printf("Error0 chat\n"); return -1; }
+
+    // verifico che il destinatario sia presente in rubrica
+    while (fgets(file_line, sizeof(file_line), fp) != NULL) {
+
+        file_username = strtok(file_line, "\n");
+
+        len = (strlen(dst_username) > strlen(file_username))? strlen(dst_username):strlen(file_username);
+
+        if(!strncmp(file_username, dst_username, len)) {
+            return true;
+        }
+    }
+
+    fclose(fp);
+    return false;
+}
+
+/*
+    Avvia una chat con l'utente dst_username.
+*/
+int chat(char* command, int* sd, char* my_username, char* dst_username) {
     
     int len;
     int ret;
-    char* message; 
+    char message[1024]; 
+    
+    // controllo se il contatto è in rubrica
+    if(!checkContacts(my_username, dst_username)) { 
+        printf("Il contatto indicato non è in rubrica.\n"); 
+        return -1; 
+    }
 
-    // unisco le tre stringhe per inviare un solo messaggio
-    len = strlen(command) + strlen(username) + 2; // il +2 serve per gli spazi
-    message = malloc(len);
-    snprintf(message, len, "%s %s", command, username);
+    // unisco le tre stringhe per inviare al server un solo messaggio
+    memset(&message, '\0', sizeof(message));
+    len = strlen(command) + strlen(dst_username) + 2; // il +2 serve per gli spazi
+    snprintf(message, len, "%s %s", command, dst_username);
     
     // invio al server il messaggio
     ret = send_TCP(sd, message);
-    if(ret < 0) { printf("Impossibile iniziare la chat.\n"); free(message); return; }
-    
-    // libero la memoria utilizzata per il messaggio
-    free(message);
+    if(ret < 0) { printf("Impossibile iniziare la chat.\n"); return -1; }
 
-    printf("Chat iniziata con successo!\n");
-    return;
+    // pulisco il buffer per ricevere la risposta
+    memset(&message, '\0', sizeof(message));
+
+    // aspetto la risposta dal server
+    ret = receive_TCP(sd, message);
+    if(ret < 0) { printf("Errore durante la ricezione della risposta dal server\n"); return -1; }
+
+    if(!strncmp(message, "offline", 7)) { // caso in cui il destinatario è offline
+        printf("Il destinatario è offline.\n");
+        return -4;
+    }
+
+    printf("Chat iniziata con successo! La porta del destinatario è: %d\n", atoi(message));
+    
+    // ritorno la porta del destinatario
+    return atoi(message);
 }
 
 /*
@@ -194,14 +596,49 @@ void share(char* command, int* sd, char* file_name) {
 /*
     Permette al device di disconnettersi dal server.
 */
-void out(int* sd) {
+void out(int* server_sd, struct User* user) {
     
     int ret;
     
     // invio la richiesta di disconnessione
-    ret = disconnect_to_server(sd);
+    ret = disconnect_to(server_sd);
     if(ret == -1) { printf("Impossibile disconnettersi.\n"); }
     printf("Disconnessione avvenuta con successo!\n");
+
+    // libero la memoria allocata per i dati dell'utente
+    free(user->my_username);
+    free(user->my_password);
+    free(user->srv_port);
+    free(user->my_port);
+}
+
+/*
+    Permette di ricevere le notifiche mentre si era offline.
+*/
+void receiveNotifications(int* sd, char* buffer) {
+    
+    int ret;
+    int num_notifications;
+    int i;
+
+    ret = receive_TCP(sd, buffer);
+    if(ret < 0) { printf("Impossibile ricevere le notifiche\n"); return; }
+
+    num_notifications = atoi(buffer);
+    if(num_notifications == 0) { return; }
+    else if(num_notifications == 1) { printf("Hai ricevuto %d notifica:\n", num_notifications); }
+    else { printf("Hai ricevuto %d notifiche:\n", num_notifications); }
+
+    // ricevo le notifiche
+    for(i = 0; i < num_notifications; i++) {
+        // pulisco il buffer
+        memset(buffer, '\0', BUFFER_SIZE);
+        
+        ret = receive_TCP(sd, buffer);
+        if(ret < 0) { printf("Impossibile ricevere la notifica\n"); continue; }
+
+        printf("%s\n", buffer);
+    }
 }
 
 /*
@@ -211,8 +648,12 @@ void out(int* sd) {
 int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockaddr_in* server_addr) {
 
     int ret;
+    int len;
     char* command = NULL;
     char* file_name = NULL;
+    char* temp_username;
+    char* temp_port;
+    char* temp_password;
     
     // prendo il comando inserito 
     command = strtok(buffer, " ");
@@ -221,25 +662,70 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
     // per gli altri comandi l'utente deve essere connesso.
     // Poi a seconda del comando inserito prendo i parametri e chiamo la funzione
     if(user->user_state == DISCONNECTED) {
+        
         if(!strncmp(command, "in", 2)) {
-            user->srv_port = strtok(NULL, " ");
-            user->my_username = strtok(NULL, " ");
-            user->my_password = strtok(NULL, " ");
+            
+            temp_port = strtok(NULL, " ");
+            temp_username = strtok(NULL, " ");
+            temp_password = strtok(NULL, " ");
 
             // controllo che l'utente abbia inserito i dati
-            if(user->srv_port == NULL || user->my_username == NULL || user->my_password == NULL) { return -1; }
+            if(temp_port == NULL || temp_username == NULL || temp_password == NULL) { return -1; }
+
+            // salvo in memoria la porta del server
+            len = strlen(temp_port);
+            user->srv_port = malloc(len + 1);
+            strncpy(user->srv_port, temp_port, len);
+            user->srv_port[len] = '\0';
+            
+            // salvo in memoria l'username dell'utente
+            len = strlen(temp_username);
+            user->my_username = malloc(len + 1);
+            strncpy(user->my_username, temp_username, len);
+            user->my_username[len] = '\0';
+            
+            // salvo in memoria la password dell'utente
+            len = strlen(temp_password);
+            user->my_password = malloc(len + 1);
+            strncpy(user->my_password, temp_password, len);
+            user->my_password[len] = '\0';
+
+            // inizializzo la lista degli utenti con cui si sta chattando
+            user->users_chatting_with = NULL;
              
-            ret = in(command, user->my_username, user->my_password, user->srv_port, sd, server_addr);
+            ret = in(command, user, sd, server_addr);
             if(ret == 0) { user->user_state = LOGGED; }
 
         } else if(!strncmp(command, "signup", 6)) { 
-            user->my_username = strtok(NULL, " ");
-            user->my_password = strtok(NULL, " ");
-
+            
+            temp_username = strtok(NULL, " ");
+            temp_password = strtok(NULL, " ");
+            
             // controllo che l'utente abbia inserito i dati
-            if(user->my_username == NULL || user->my_password == NULL) { return -1; }
+            if(temp_username == NULL || temp_password == NULL) { return -1; }
+            
+            
+            // salvo in memoria la porta del server
+            user->srv_port = malloc(5);
+            strncpy(user->srv_port, "4242", len);
+            user->srv_port[len] = '\0';
+            
+            // salvo in memoria l'username dell'utente
+            len = strlen(temp_username);
+            user->my_username = malloc(len + 1);
+            strncpy(user->my_username, temp_username, len);
+            user->my_username[len] = '\0';
+            
+            // salvo in memoria la password dell'utente
+            len = strlen(temp_password);
+            user->my_password = malloc(len + 1);
+            strncpy(user->my_password, temp_password, len);
+            user->my_password[len] = '\0';
 
-            ret = signup(command, user->my_username, user->my_password, user->my_port, sd, server_addr);
+            // inizializzo la lista degli utenti con cui si sta chattando
+            user->users_chatting_with = NULL;
+
+            ret = signup(command, user, sd, server_addr);
             if(ret == 0) { user->user_state = LOGGED; }
         
         } else { // in caso di comando non valido restituisco -1
@@ -250,19 +736,28 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
             
             hanging(command, sd);
         } else if(!strncmp(command, "show", 4)) {
-            user->dst_username = strtok(NULL, " ");
+            temp_username = strtok(NULL, " ");
 
             // controllo che l'utente abbia inserito i dati
-            if(user->dst_username == NULL) { return -2; }
+            if(temp_username == NULL) { return -2; }
             
-            show(command, sd, user->dst_username);
+            show(command, sd, temp_username);
         } else if(!strncmp(command, "chat", 4)) {
-            user->dst_username = strtok(NULL, " ");
+            
+            temp_username = strtok(NULL, " ");
 
             // controllo che l'utente abbia inserito i dati
-            if(user->dst_username == NULL) { return -2; }
+            if(temp_username == NULL) { return -2; }
+
+            // mi salvo il destinatario del messaggio
+            len = strlen(temp_username);
+            user->dst_username = malloc(len + 1);
+            strncpy(user->dst_username, temp_username, len);
+            user->dst_username[len] = '\0';
             
-            chat(command, sd, user->dst_username);
+            ret = chat(command, sd, user->my_username, user->dst_username);
+            
+            return ret;
         } else if(!strncmp(command, "share", 5)) {
             file_name = strtok(NULL, " ");
 
@@ -271,9 +766,10 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
             
             share(command, sd, file_name);
         } else if(!strncmp(command, "out", 3)) {
-            out(sd);
+            out(sd, user);
             
             user->user_state = DISCONNECTED;
+            return -3;
         } else { // in caso di comando non valido restituisco -2
             return -2;
         }

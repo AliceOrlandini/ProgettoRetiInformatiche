@@ -13,63 +13,22 @@
 #include "./server/include/device_requests.h"
 #include "./network/include/network.h"
 
-/*#include <sys/select.h>
-#include <stdlib.h>
-#include <time.h>
-#include <stdbool.h>*/
-
-/*
-    Gestione della richiesta del device, a seconda
-    del comando ricevuto si invoca la funzione corrispondente
-*/
-int serveDeviceRequest(int* sd, char* request) {
-
-    char* command = NULL;
-    char* dev_username;
-    char* dev_password;
-    char* dev_port;
-    
-    // prendo il comando inserito 
-    command = strtok(request, " ");
-
-    if(!strncmp(command, "in", 2)) {
-        dev_username = strtok(NULL, " ");
-        dev_password = strtok(NULL, " ");
-
-        in(sd, dev_username, dev_password);
-    } else if(!strncmp(command, "signup", 6)) {
-
-        dev_username = strtok(NULL, " ");
-        dev_password = strtok(NULL, " ");
-        dev_port = strtok(NULL, " ");
-        
-        signup(sd, dev_username, dev_password, dev_port);
-    } else if(!strncmp(command, "hanging", 7)) {
-        hanging();
-    } else if(!strncmp(command, "show", 4)) {
-        show();
-    } else if(!strncmp(command, "chat", 4)) {
-        chat();
-    } else if(!strncmp(command, "share", 5)) {
-        share();
-    } else { return -1; }
-    return 0;
-}
-
 /* 
     Gestione dei descrittori pronti 
-    tramite l'io multiplexing 
+    tramite l'io multiplexing.
 */
 void ioMultiplexing(int listener) {
     
     int new_sd;
     struct sockaddr_in client_addr;
     int addrlen = sizeof(struct sockaddr_in);
+    
     pid_t pid;
     fd_set master;
     fd_set read_fds;
     int fdmax;
     int i;
+    
     int ret;
     char buffer[BUFFER_SIZE];
 
@@ -85,62 +44,99 @@ void ioMultiplexing(int listener) {
         select(fdmax + 1, &read_fds, NULL, NULL, NULL);
         for(i = 0; i <= fdmax; i++) {
             if(FD_ISSET(i, &read_fds)) {
-                if(i == listener) {
+                if(i == listener) { 
+                    
                     // accetto la nuova richiesta di connessione
                     new_sd = accept(listener, (struct sockaddr*)&client_addr, (socklen_t*)&addrlen);
                     if(new_sd < 0) { perror("Error0 accept"); }
                     else {
                         printf("Stabilita una connessione!\n");
                         FD_SET(new_sd, &master);
-                        if(new_sd > fdmax) { fdmax = new_sd; }
+                        if(new_sd > fdmax) { fdmax = new_sd; } 
                     }
+            
                 } else if(i == STANDARD_INPUT) {
                     // prelievo il comando dallo standard input e lo salvo nel buffer
                     read(STANDARD_INPUT, (void*)&buffer, SERVER_COMMAND_SIZE);
                     
                     // eseguo l'azione prevista dal comando
                     executeServerCommand((char*)&buffer, &listener);
+                
                 } else { 
+
                     pid = fork();
                     if(pid < 0) { perror("Error1 fork"); }
                     else if(pid == 0) { // sono nel processo figlio
                         close(listener);
 
+                        char* username = NULL;
+                        struct pendingMessage* pending_message_list = NULL;
+
                         while(1) {
-                            // inizializzo il buffer per ricevere la lunghezza
-                            memset(&buffer, '\0', sizeof(buffer));
 
+                            // inizializzo il buffer 
+                            memset(&buffer, '\0', BUFFER_SIZE);
+                            
+                            // ricevo la richiesta dal client
                             ret = receive_TCP(&i, buffer);
+                            if(ret < 0) { out(username); delPMList(&pending_message_list); break; }
 
-                            // se ricevo -2 dalla receive significa
-                            // che il client si è disconnesso
-                            if(ret == -2) { out(); break; }
+                            // se ricevo -2 significa che il client si è disconnesso
+                            if(ret == -2) { out(username); delPMList(&pending_message_list); break; }
 
-                            // se ricevo -2 dalla receive significa che
+                            // se ricevo -1 dalla receive significa che
                             // la comunicazione ha avuto qualche problema
-                            if(ret == -1) { continue; }
+                            else if(ret == -1) { continue; }
 
-                            printf("Richiesta ricevuta da un client %s\n", buffer);
+                            // servo la richiesta del client
+                            ret = serveDeviceRequest(&i, buffer, &username, &pending_message_list);
+                            if(ret < 0) { printf("Richiesta non valida\n"); continue; }
+                            else if(ret == 1) { 
+                                username[strlen(username)] = '\0'; 
+                                
+                                // creo la lista dei messaggi pendenti
+                                createPMList(&pending_message_list, username);
 
-                            // a seconda del tipo di richiesta eseguo la funzione corrispondente
-                            ret = serveDeviceRequest(&i, buffer);
-                            if(ret < 0) { printf("Richiesta non valida\n"); }
+                                // invio le notifiche dei messaggi letti mentre era offline
+                                sendNotifications(&i, username);
+
+                            } else if(ret == 2) { // in questo caso salvo i messaggi che arriano dal client
+                                while(1) {
+                                    
+                                    // inizializzo il buffer 
+                                    memset(&buffer, '\0', BUFFER_SIZE);
+
+                                    // ricevo il messaggio dal client
+                                    ret = receive_TCP(&i, buffer);
+                                    if(ret < 0) { out(username); delPMList(&pending_message_list); return; }
+                                    
+                                    // controllo se l'utente vuole terminare la chat
+                                    if(!strncmp(buffer, "\\q", 2)) { 
+                                        printf("Chat terminata con successo!\n"); break;
+                                    } else { 
+                                        // altrimenti salvo il messaggio
+                                        saveMessage(buffer);
+                                        printf("Messaggio salvato con successo!\n");  
+                                    }
+                                }
+                            }
                         }
                         
-                        printf("Il client si è disconnesso\n"); 
-                            
                         // chiudo il socket di comunicazione
                         close(new_sd);
                         // lo tolgo dal set di monitorati
                         FD_CLR(new_sd, &master);
+                        // libero la memoria allocata per l'username
+                        free(username);
                         // termino il processo figlio
                         exit(0);
                     } else { // sono nel processo padre
+                        
                         // chiudo il socket di comunicazione
                         close(i);
                         // tolgo il descrittore del socket di comunicazione dal set dei monitorati
                         FD_CLR(i, &master);
-                    }  
+                    }
                 }
             }
         }
@@ -159,7 +155,7 @@ int main(int argc, char *argv[]) {
     printf("***** SERVER STARTED *****\n");
     
     // inizializzo il server
-    ret = init_server(&listener, &server_addr, srv_port);
+    ret = init_listener(&listener, &server_addr, srv_port);
     if(ret < 0) { exit(0); }
 
     // mostro i comandi disponibili 
@@ -168,5 +164,5 @@ int main(int argc, char *argv[]) {
     // faccio partire l'io multiplexing
     ioMultiplexing(listener);
     
-    return  0;
+    return 0;
 }
