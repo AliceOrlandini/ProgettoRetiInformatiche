@@ -138,6 +138,8 @@ void addElemToChattingWithList(struct usersChattingWith** users_chatting_with, c
     strncpy(new_user->dst_username, username, len);
     new_user->dst_username[len] = '\0';
 
+    // new_user->addr = NULL;
+
     new_user->port = port;
 
     new_user->p2p_sd = p2p_sd;
@@ -157,6 +159,8 @@ void delChattingWithList(struct usersChattingWith** users_chatting_with) {
     while(*users_chatting_with != NULL) {
         del_user = (*users_chatting_with)->next;
         free((*users_chatting_with)->dst_username);
+        // if(&(*users_chatting_with)->addr != NULL)
+            // free(&(*users_chatting_with)->addr);
         free(*users_chatting_with);
         *users_chatting_with = del_user;
     }
@@ -190,7 +194,9 @@ void delUserFromChattingWithList(struct usersChattingWith** users_chatting_with,
     if((*users_chatting_with)->p2p_sd == p2p_sd) {
         struct usersChattingWith* elem = *users_chatting_with;
         *users_chatting_with = (*users_chatting_with)->next;
-        
+        // elimino la memoria allocata per l'indirizzo
+        // if(&elem->addr != NULL)
+            // free(&elem->addr);
         // elimino la memoria allocata per il messaggio
         free(elem->dst_username);
         // elimino la memoria allocata per la struttura
@@ -216,10 +222,42 @@ int sendMessageToAll(struct usersChattingWith** users_chatting_with, char* messa
         if(ret < 0) { return -1; }
         elem = elem->next;
     }
-    printf("FINE\n");
+    // printf("FINE\n");
     return 0;
 }
 
+void addNewConnToChattingWithList(struct usersChattingWith** users_chatting_with, char* username, in_port_t port, int* sd) {
+    // aggiungo il nuovo utente in coda alla lista
+    struct usersChattingWith* new_user;
+    struct usersChattingWith* q;
+    struct usersChattingWith* p;
+    int len;
+    int ret;
+
+    for(q = *users_chatting_with; q != NULL; q = q->next) {
+        p = q;
+    }
+    // inizializzo il nuovo utente
+    new_user = malloc(sizeof(struct usersChattingWith));
+
+    // inizializzo i dati del nuovo utente
+    len = strlen(username);
+    new_user->dst_username = malloc(len + 1);
+    strncpy(new_user->dst_username, username, len);
+    new_user->dst_username[len] = '\0';
+
+    new_user->port = port;
+    ret = connect_to(&new_user->p2p_sd, &new_user->addr, port);
+    *sd = new_user->p2p_sd;
+
+    new_user->next = NULL;
+    if(q == *users_chatting_with)
+        *users_chatting_with = new_user;
+    else 
+        p->next = new_user;
+
+    return;
+}
 
 
 
@@ -653,6 +691,7 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
 
             // inizializzo la lista degli utenti con cui si sta chattando
             user->users_chatting_with = NULL;
+            // user->users_chatting_with->addr = NULL;
 
             ret = signup(command, user, sd, server_addr);
             if(ret == 0) { user->user_state = LOGGED; }

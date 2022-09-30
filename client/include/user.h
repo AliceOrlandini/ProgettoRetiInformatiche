@@ -2,6 +2,7 @@ enum User_State { DISCONNECTED, LOGGED, CHATTING_ONLINE, CHATTING_OFFLINE };
 
 struct usersChattingWith {
     char* dst_username;
+    struct sockaddr_in addr;
     in_port_t port;
     int p2p_sd;
     struct usersChattingWith* next;

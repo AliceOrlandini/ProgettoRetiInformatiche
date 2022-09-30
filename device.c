@@ -61,7 +61,6 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
             // aggiungo questo utente alla lista di 
             // quelli con cui l'utente sta chattando
             addElemToChattingWithList(&user->users_chatting_with, user->dst_username, ret, *p2p_sd);
-            // printChattingWithList(&user->users_chatting_with);
 
             // cambio lo stato dell'utente
             user->user_state = CHATTING_ONLINE;
@@ -110,7 +109,7 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
                 // pulisco il buffer
                 memset(buffer, '\0', BUFFER_SIZE);
                 
-                // ricevo l'username dell'utente online
+                // ricevo l'username e la porta dell'utente online
                 ret = receive_TCP(sd, buffer);
                 if(ret < 0) { printf("Impossibile ricevere utente"); continue; }
             
@@ -142,8 +141,8 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
 
         // 2. controllo se l'utente ha richiesto di aggiungere un membro al gruppo
         if(!strncmp(buffer, "\\a", 2) && user->user_state == CHATTING_ONLINE) {
+            
             int sd;
-            struct sockaddr_in cl_addr;
             username = strtok(buffer, " ");
             username = strtok(NULL, " ");
             
@@ -155,13 +154,15 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
                 return 1;
             }
 
-            printf("La porta è %s\n> ", port);
+            printf("La porta è %d\n> ", atoi(port));
             fflush(stdout);
 
-            connect_to(&sd, &cl_addr, atoi(port));
-            addElemToChattingWithList(&user->users_chatting_with, username, atoi(port), sd);
-            // free(cl_addr);
-            // devo anche mandare al nuovo utente le porte degli altri 
+            // creo una nuova connessione con il destinatario
+            addNewConnToChattingWithList(&user->users_chatting_with, username, atoi(port), &sd);
+            FD_SET(sd, master);
+            if(sd > *fdmax) { *fdmax = sd; } 
+
+            printf("Utente inserito nel gruppo con successo!\n");
             return 1;
         }
         
@@ -305,8 +306,9 @@ void ioMultiplexing(int listener, int* sd, char* buffer) {
                     ret = receive_TCP(&i, (char*)buffer);
                     
                     // in questo caso ho ricevuto 0 byte quindi chiudo il socket di
-                    // comunicazione con il device e riporto lo stato utente a LOGGED
+                    // comunicazione con i device e riporto lo stato utente a LOGGED
                     if(ret == -2) { 
+                        // DA CAMBIARE -> GRUPPO
                         disconnect_to(&i);
                         FD_CLR(i, &master); 
                         printf("Il device ha chiuso la comunicazione.\n"); 
@@ -319,6 +321,9 @@ void ioMultiplexing(int listener, int* sd, char* buffer) {
                         delUserFromChattingWithList(&user.users_chatting_with, i);
                         continue;
                     }
+
+                    // invio il messaggio agli altri componenti del gruppo
+                    // DA CAMBIARE -> GRUPPO
                     
                     // stampo a video il messaggio ricevuto
                     printf("%s\n> ", buffer);
