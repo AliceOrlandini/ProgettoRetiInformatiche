@@ -166,6 +166,9 @@ int receive_UDP(int* sd, in_port_t port, struct sockaddr_in* my_addr, char* mess
 return 0;
 }
 
+/*
+    Funzione per di inviare un file. 
+*/
 int send_file(int* sd, FILE* fp) {
     
     char data[16380];
@@ -199,6 +202,9 @@ int send_file(int* sd, FILE* fp) {
     return 0;
 }
 
+/*
+    Funzione per di ricevere un file. 
+*/
 int receive_file(int* sd, FILE* fp) {
 
     char data[16380];
@@ -211,7 +217,7 @@ int receive_file(int* sd, FILE* fp) {
         // ricevo la quantità di dati
         ret = recv(*sd, (void*)&lmsg, sizeof(uint16_t), 0);
         if(ret < 0) { perror("Error1 receive_file len"); return -1; }
-        if(ret == 0) { printf("QUI2\n"); return -2; }
+        if(ret == 0) { return -2; }
 
         // riconverto la dimensione in formato host
         len = ntohs(lmsg);
@@ -224,8 +230,8 @@ int receive_file(int* sd, FILE* fp) {
 
         // ricevo i dati
         ret = recv(*sd, (void*)data, len, 0);
-        if(ret < 0) { perror("Error2 receive_file data"); printf("QUI3\n"); return -1; }
-        if(ret == 0) { printf("QUI4\n"); return -2; }
+        if(ret < 0) { perror("Error2 receive_file data"); return -1; }
+        if(ret == 0) { return -2; }
 
         // scrivo i dati all'interno del file
         fwrite((void*)&data, len, 1, fp);

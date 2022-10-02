@@ -138,8 +138,6 @@ void addElemToChattingWithList(struct usersChattingWith** users_chatting_with, c
     strncpy(new_user->dst_username, username, len);
     new_user->dst_username[len] = '\0';
 
-    // new_user->addr = NULL;
-
     new_user->port = port;
 
     new_user->p2p_sd = p2p_sd;
@@ -158,9 +156,9 @@ void delChattingWithList(struct usersChattingWith** users_chatting_with) {
     struct usersChattingWith *del_user;
     while(*users_chatting_with != NULL) {
         del_user = (*users_chatting_with)->next;
+        // if((*users_chatting_with)->dst_username != NULL)
         free((*users_chatting_with)->dst_username);
-        // if(&(*users_chatting_with)->addr != NULL)
-            // free(&(*users_chatting_with)->addr);
+        
         free(*users_chatting_with);
         *users_chatting_with = del_user;
     }
@@ -227,6 +225,7 @@ int sendMessageToAll(struct usersChattingWith** users_chatting_with, char* messa
 }
 
 void addNewConnToChattingWithList(struct usersChattingWith** users_chatting_with, char* username, in_port_t port, int* sd) {
+    
     // aggiungo il nuovo utente in coda alla lista
     struct usersChattingWith* new_user;
     struct usersChattingWith* q;
