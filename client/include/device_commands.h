@@ -17,7 +17,6 @@ void hanging(char*, int*);
 void show(char*, int*, char*);
 bool checkContacts(char*, char*);
 int chat(char*, int*, char*, char*);
-void share(char*, int*, char*);
 void out(int*, struct User*);
 void receiveNotifications(int*, char*);
 int executeDeviceCommand(char*, struct User*, int*, struct sockaddr_in*);

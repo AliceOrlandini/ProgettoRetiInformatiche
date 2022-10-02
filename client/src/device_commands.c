@@ -304,7 +304,7 @@ void printCommands(struct User user) {
     if(user.user_state != LOGGED) {
         printf("1) in     --> per accedere al servizio.\n2) signup --> per creare un account.\n");
     } else if(user.user_state == LOGGED) {
-        printf("1) hanging --> stampa il numero di messaggi ricevuti mentre si era offline.\n2) show    --> per ricevere i messaggi pendenti dall'utente specificato.\n3) chat    --> per chattare con un altro utente.\n4) share   --> per condividere un file.\n5) out     --> per disconnettersi.\n");
+        printf("1) hanging --> stampa il numero di messaggi ricevuti mentre si era offline.\n2) show    --> per ricevere i messaggi pendenti dall'utente specificato.\n3) chat    --> per chattare con un altro utente.\n4) share   --> per condividere un file. (solo durante la chat)\n5) out     --> per disconnettersi.\n");
     }
 }
 
@@ -568,32 +568,6 @@ int chat(char* command, int* sd, char* my_username, char* dst_username) {
 }
 
 /*
-    Invia il file file_name al device su cui è connesso
-    l'utente o gli utenti con cui si sta chattando. 
-*/
-void share(char* command, int* sd, char* file_name) {
-    
-    int len;
-    int ret;
-    char* message; 
-
-    // unisco le tre stringhe per inviare un solo messaggio
-    len = strlen(command) + strlen(file_name) + 2; // il +2 serve per gli spazi
-    message = malloc(len);
-    snprintf(message, len, "%s %s", command, file_name);
-    
-    // invio al server il messaggio
-    ret = send_TCP(sd, message);
-    if(ret < 0) { printf("Impossibile fare la share.\n"); free(message); return; }
-    
-    // libero la memoria utilizzata per il messaggio
-    free(message);
-
-    printf("Share avvenuta con successo!\n");
-    return;
-}
-
-/*
     Permette al device di disconnettersi dal server.
 */
 void out(int* server_sd, struct User* user) {
@@ -759,12 +733,8 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
             
             return ret;
         } else if(!strncmp(command, "share", 5)) {
-            file_name = strtok(NULL, " ");
-
-            // controllo che l'utente abbia inserito i dati
-            if(file_name == NULL) { return -2; }
-            
-            share(command, sd, file_name);
+            // stampa di informazione
+            printf("Questo comando è invocabile solo quando si sta chattando.\n");
         } else if(!strncmp(command, "out", 3)) {
             out(sd, user);
             

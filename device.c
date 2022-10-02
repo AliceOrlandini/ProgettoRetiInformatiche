@@ -23,7 +23,7 @@ struct User user;
 */
 struct onlineUser* online_user_list = NULL;
 
-void destroySockets(int* server_sd, int* listener, fd_set* master) {
+void clearMaster(int* server_sd, int* listener, fd_set* master) {
     
     // tolgo dal set dei monitorati il socket per la comunicazione
     // con il server e il socket di ascolto
@@ -101,19 +101,18 @@ int getOnlineUsers(int* sd, struct User* user, char* buffer) {
         username = strtok(buffer, " ");
         port = strtok(NULL, " ");
 
-        // stampo l'username (togliendo l'username del device stesso)
+        // stampo l'username (togliendo l'username del device 
+        // stesso e quelli non presenti in rubrica)
         len = (strlen(username) > strlen(user->my_username))? strlen(username):strlen(user->my_username);
         if(!strncmp(username, user->my_username, len)) { continue; }
-        // se ho ricevuto un contatto non in rubrica non lo stampo
         if(!checkContacts(user->my_username, username)) { continue; } 
-        else {
-            // salvo in lista i dati dell'utente in modo da non dover
-            // ricontattare il server per aggiungerlo alla chat di gruppo
-            addElemToOnlineUserList(&online_user_list, username, port);
-            
-            // stampo a video l'username dell'utente
-            printf("%s\n", username); 
-        }
+        
+        // se ho superato i controlli salvo in lista i dati dell'utente in modo 
+        // da non dover ricontattare il server per aggiungerlo alla chat di gruppo
+        addElemToOnlineUserList(&online_user_list, username, port);
+        
+        // stampo a video l'username dell'utente
+        printf("%s\n", username); 
     }
 
     // pulisco il buffer
@@ -138,16 +137,18 @@ void newGroupMember(struct User* user, char* buffer, fd_set* master, int* fdmax)
         return;
     }
 
-    printf("La porta è %d\n> ", atoi(port));
-    fflush(stdout);
+    // printf("La porta è %d\n> ", atoi(port));
+    // fflush(stdout);
 
     // creo una nuova connessione con il destinatario
     addNewConnToChattingWithList(&user->users_chatting_with, username, atoi(port), &sd);
     FD_SET(sd, master);
     if(sd > *fdmax) { *fdmax = sd; } 
 
+    // pulisco il buffer
     memset(buffer, '\0', BUFFER_SIZE);
 
+    // stampa di informazione
     printf("Utente inserito nel gruppo con successo!\n> ");
     fflush(stdout);
     return; 
@@ -159,6 +160,7 @@ int quitChat(struct User* user, int* p2p_sd, fd_set* master, int* sd) {
     
     // agisco diversamente a seconda dello stato dell'utente
     if(user->user_state == CHATTING_ONLINE) {
+        
         // eseguo la disconnessione da tutti i membri del gruppo
         delAllConnFromChattingWithList(&user->users_chatting_with, master);
         
@@ -168,6 +170,7 @@ int quitChat(struct User* user, int* p2p_sd, fd_set* master, int* sd) {
         // distruggo la lista degli utenti con cui si sta chattando
         delChattingWithList(&user->users_chatting_with);
     } else {
+        
         // comunico al server che il client ha smesso di inviare messaggi
         ret = send_TCP(sd, "\\q\0");
         if(ret < 0) { return 2; }
@@ -196,9 +199,8 @@ int sendMessage(struct User* user, char* buffer, int* sd) {
         message = malloc(len);
         snprintf(message, len, "%s: %s", user->my_username, buffer);
         
-        // invio il messaggio
+        // invio il messaggio a tutti i membri del gruppo
         ret = sendMessageToAll(&user->users_chatting_with, message);
-        // ret = send_TCP(p2p_sd, message);
         if(ret < 0) { return 1; }
         printf("*");
         fflush(stdout);
@@ -209,6 +211,7 @@ int sendMessage(struct User* user, char* buffer, int* sd) {
         message = malloc(len);
         snprintf(message, len, "%s %s %s", user->my_username, user->dst_username, buffer);
         
+        // invio al server il messaggio
         ret = send_TCP(sd, message);
         if(ret < 0) { return 1; }
     }
@@ -248,9 +251,91 @@ void sendMessageToOthers(struct usersChattingWith** users_chatting_with, int p2p
     return;
 }
 
+void shareFile(struct usersChattingWith** users_chatting_with, char* file_name) {
+
+    FILE* fp;
+    int ret;
+    int len;
+    struct usersChattingWith* elem = NULL;
+    char* message;
+    
+    fp = fopen(file_name, "rb"); // apro il file in lettura in binario
+    if(fp == NULL) { printf("Errore nell'apertura del file.\n"); return; }
+
+    if(users_chatting_with == NULL) {
+        printf("\nLa lista è vuota.\n");
+        return;
+    }
+
+    // unisco le stringhe per inviare un solo messaggio
+    len = strlen(file_name) + 7; 
+    message = malloc(len);
+    snprintf(message, len, "share %s", file_name);
+
+    // invio ai componenti del gruppo 
+    // l'informazione che sto per inviare un file e poi invio il file
+    elem = *users_chatting_with;
+    while(elem != NULL) {
+        
+        ret = send_TCP(&elem->p2p_sd, message);
+        if(ret < 0) { printf("Impossibile inviare il file a questo utente.\n"); elem = elem->next; continue; }
+
+        ret = send_file(&elem->p2p_sd, fp);
+        if(ret < 0) { printf("Impossibile inviare il file a questo utente.\n"); elem = elem->next; continue; }
+
+        elem = elem->next;
+    }
+
+    // libero la memoria allocata per il messaggio
+    free(message);
+
+    // chiudo il file
+    fclose(fp);
+  
+    // stampa di informazione
+    printf("File inviato con successo!\n> ");
+    fflush(stdout);
+    return;
+}
+
+void receiveFile(int* sd, char* file_name) {
+
+    FILE* fp;
+    int ret;
+    int len;
+    char* file_path;
+
+    // creo il path di dove andrà salvato il file
+    len = strlen(file_name) + 16;
+    file_path = malloc(len);
+    strncpy(file_path, "./client/media/", 15);
+    strncat(file_path, file_name, len);
+    file_path[len - 1] = '\0';
+
+    fp = fopen(file_path, "wb"); // apro il file in scrittura binaria
+    if(fp == NULL) { printf("Errore nell'apertura del file.\n"); return; }
+   
+    // ricevo il file
+    ret = receive_file(sd, fp);
+    if(ret < 0) { printf("Impossibile ricevere il file.\n"); fclose(fp); return; }
+  
+    // chiudo il file
+    fclose(fp);
+
+    // stampa di informazione
+    printf("File ricevuto con successo!\n> ");
+    fflush(stdout);
+    return;
+}
+
+void sendFileToOthers() {
+
+}
+
 int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p_sd, struct sockaddr_in* dst_addr, int* fdmax, char* buffer) {
 
     int ret;
+    char* file_name;
 
     if(user->user_state == LOGGED) {
         
@@ -260,7 +345,7 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
             printf("Comando non valido.\n"); 
         } else if(ret == -3) {  // se il comando era out allora tolgo i 
                                 // socket dal set dei monitorati
-            destroySockets(sd, listener, master);
+            clearMaster(sd, listener, master);
             return -1;
         } else if(ret == -4) {  // in questo caso il destinatario non è online
                                 // quindi i messaggi verranno salvati sul server
@@ -273,8 +358,7 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
         }
         // pulisco il buffer
         memset(buffer, '\0', BUFFER_SIZE);
-        // stampo il menu dei comandi disponibili
-        // printCommands(*user);
+
     } else if(user->user_state == CHATTING_ONLINE || user->user_state == CHATTING_OFFLINE) {
         
         // per prima cosa controllo se l'utente ha digitato un comando particolare:
@@ -309,8 +393,22 @@ int newInput(struct User* user, int* sd, int* listener, fd_set* master, int* p2p
             ret = quitChat(user, p2p_sd, master, sd);
             return ret;
         }
+
+        // 4. controllo se l'utente vuole inviare un file
+        if(!strncmp(buffer, "share", 5)) {
+
+            file_name = strtok(buffer, " ");
+            file_name = strtok(NULL, " ");
+
+            // controllo che l'utente abbia inserito il nome del file
+            if(file_name == NULL) { printf("Nome del file non specificato.\n"); return 1; }
+            
+            // invio il file a tutti i componenti del gruppo
+            shareFile(&user->users_chatting_with, file_name);
+            return 1;
+        }
         
-        // 4. se ho passato tutti i controlli allora invio il
+        // 5. se ho passato tutti i controlli allora invio il
         //    messaggio o al server o a tutti i membri del gruppo
         ret = sendMessage(user, buffer, sd);
         return ret;
@@ -335,7 +433,6 @@ void ioMultiplexing(int listener, int* sd, char* buffer) {
     fd_set read_fds;
     int fdmax;
     int i;
-    // char* message;
 
     FD_ZERO(&master);
     FD_ZERO(&read_fds);
@@ -394,9 +491,11 @@ void ioMultiplexing(int listener, int* sd, char* buffer) {
                     ret = receive_TCP(&i, (char*)buffer);
                     
                     // in questo caso ho ricevuto 0 byte quindi chiudo il socket di
-                    // comunicazione con i device e riporto lo stato utente a LOGGED
+                    // comunicazione con il device e riporto lo stato utente a LOGGED
+                    // nel caso in cui non stia chattando con nessun altro
                     if(ret == -2) { 
-                        // Elimino la connessione con questo device
+                        
+                        // elimino la connessione con questo device
                         delConnFromChattingWithList(&user.users_chatting_with, &i, &master);
                         printf("Il device ha chiuso la comunicazione.\n"); 
 
@@ -413,8 +512,24 @@ void ioMultiplexing(int listener, int* sd, char* buffer) {
 
                         continue;
                     }
+
+                    // controllo se l'utente mi vuole inviare un file
+                    if(!strncmp(buffer, "share", 5)) {
+                        
+                        // recupero il nome del file
+                        char* file_name = strtok(buffer, " ");
+                        file_name = strtok(NULL, " ");
+                        
+                        // ricevo il file
+                        receiveFile(&i, file_name);
+                        
+                        // invio il file agli altri componenti del gruppo
+                        // sendFileToOthers();
+                        continue;
+                    }
                     
-                    // invio il messaggio agli altri componenti del gruppo
+                    // se non avevo ricevuto 0 byte allora invio il
+                    // messaggio agli altri componenti del gruppo
                     sendMessageToOthers(&user.users_chatting_with, i, buffer);
                     
                     // stampo a video il messaggio ricevuto
@@ -464,6 +579,7 @@ int main(int argc, char *argv[]) {
 
     // finchè l'utente non si connette non faccio partire l'io multiplexing 
     while(user.user_state == DISCONNECTED) {
+        
         // prelievo il comando dallo standard input e lo salvo nel buffer
         read(STANDARD_INPUT, (void*)&buffer, BUFFER_SIZE);
         len = strlen(buffer);
