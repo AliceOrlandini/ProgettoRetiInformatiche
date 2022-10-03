@@ -11,7 +11,12 @@
 #include "./client/include/device_consts.h"
 #include "./client/include/device_commands.h"
 #include "./network/include/network.h"
+#include "./client/include/online_users.h"
+#include "./client/include/users_chatting_with.h"
 
+/*
+    Funzione per pulire il set dei monitorati.
+*/
 void clearMaster(int* server_sd, int* listener, fd_set* master) {
     
     // tolgo dal set dei monitorati il socket per la comunicazione
@@ -21,6 +26,10 @@ void clearMaster(int* server_sd, int* listener, fd_set* master) {
     return;
 }
 
+/*
+    Funzione chiamata quando l'utente inizia una chat offline,
+    ovvero il caso in cui i messaggi vengono salvati sul server.
+*/
 void chattingOffline(struct User* user, char* buffer) {
     
     // cambio lo stato dell'utente
@@ -35,6 +44,11 @@ void chattingOffline(struct User* user, char* buffer) {
     return;
 }
 
+/*
+    Funzione chiamata quando l'utente inizia una chat online.
+    Si crea una nuova connessione con il device e lo si aggiunge
+    alla lista degli utenti con cui si sta chattando.
+*/
 void chattingOnline(int ret, struct User* user, fd_set* master, int* p2p_sd, struct sockaddr_in* dst_addr, int* fdmax, char* buffer) {
     
     // creo una nuova connessione con il destinatario e lo aggiungo alla lista
@@ -54,7 +68,10 @@ void chattingOnline(int ret, struct User* user, fd_set* master, int* p2p_sd, str
     return; 
 }
 
-int getOnlineUsers(int* sd, struct User* user, struct onlineUser** online_user_list, char* buffer) {
+/*
+    Permette di ricevere dal server la lista degli utenti online.
+*/
+int getOnlineUsers(int* server_sd, struct User* user, struct onlineUser** online_user_list, char* buffer) {
     
     int ret;
     int len;
@@ -64,14 +81,14 @@ int getOnlineUsers(int* sd, struct User* user, struct onlineUser** online_user_l
     char* port = NULL;
 
     // invio al server la richiesta di ricevere gli utenti online
-    ret = send_TCP(sd, buffer);
+    ret = send_TCP(server_sd, buffer);
     if(ret < 0) { printf("Impossibile ricevere la lista degli online"); return 1; }
 
     // pulisco il buffer
     memset(buffer, '\0', BUFFER_SIZE);
     
     // ricevo il numero di utenti online
-    ret = receive_TCP(sd, buffer);
+    ret = receive_TCP(server_sd, buffer);
     if(ret < 0) { printf("Impossibile ricevere la lista degli online"); return 1; }
     num_online = atoi(buffer);
     
@@ -84,9 +101,10 @@ int getOnlineUsers(int* sd, struct User* user, struct onlineUser** online_user_l
         memset(buffer, '\0', BUFFER_SIZE);
         
         // ricevo l'username e la porta dell'utente online
-        ret = receive_TCP(sd, buffer);
+        ret = receive_TCP(server_sd, buffer);
         if(ret < 0) { printf("Impossibile ricevere utente"); continue; }
     
+        // prelevo i dati
         username = strtok(buffer, " ");
         port = strtok(NULL, " ");
 
@@ -109,14 +127,16 @@ int getOnlineUsers(int* sd, struct User* user, struct onlineUser** online_user_l
     return 0; 
 }
 
-void newGroupMember(struct User* user, struct onlineUser** online_user_list, char* buffer, fd_set* master, int* fdmax) {
+/*
+    Permette di inserire un utente nel gruppo. In particolare,
+    si preleva dalla lista la porta del device e poi si instaura 
+    una comunicazione p2p. Infine il device viene inserito nella 
+    lista di quelli con cui si sta chattando.
+*/
+void newGroupMember(struct User* user, struct onlineUser** online_user_list, char* username, fd_set* master, int* fdmax) {
     
     int sd;
-    char* username;
     char* port = NULL;
-    
-    username = strtok(buffer, " ");
-    username = strtok(NULL, " ");
     
     // recupero la porta di username 
     port = getPortFromOnlineUserList(online_user_list, username);
@@ -126,16 +146,10 @@ void newGroupMember(struct User* user, struct onlineUser** online_user_list, cha
         return;
     }
 
-    // printf("La porta è %d\n> ", atoi(port));
-    // fflush(stdout);
-
     // creo una nuova connessione con il destinatario
     addNewConnToChattingWithList(&user->users_chatting_with, username, atoi(port), &sd);
     FD_SET(sd, master);
     if(sd > *fdmax) { *fdmax = sd; } 
-
-    // pulisco il buffer
-    memset(buffer, '\0', BUFFER_SIZE);
 
     // stampa di informazione
     printf("Utente inserito nel gruppo con successo!\n> ");
@@ -143,7 +157,12 @@ void newGroupMember(struct User* user, struct onlineUser** online_user_list, cha
     return; 
 }
 
-int quitChat(struct User* user, struct onlineUser** online_user_list, int* p2p_sd, fd_set* master, int* sd) {
+/*
+    Permette di chiudere la comunicazione con i device nel caso 
+    di chat online, oppure invia al server l'informazione che 
+    si è finito di inviare messaggi.
+*/
+int quitChat(struct User* user, struct onlineUser** online_user_list, int* p2p_sd, fd_set* master, int* server_sd) {
     
     int ret; 
     
@@ -161,7 +180,7 @@ int quitChat(struct User* user, struct onlineUser** online_user_list, int* p2p_s
     } else {
         
         // comunico al server che il client ha smesso di inviare messaggi
-        ret = send_TCP(sd, "\\q\0");
+        ret = send_TCP(server_sd, "\\q\0");
         if(ret < 0) { return 2; }
     }
 
@@ -169,26 +188,33 @@ int quitChat(struct User* user, struct onlineUser** online_user_list, int* p2p_s
     if(user->dst_username != NULL)
         free(user->dst_username);
 
-    // close(*p2p_sd);
-
     // cambio lo stato dell'utente
     user->user_state = LOGGED;
     printf("Chat terminata con successo!\n");
     return 1;
 }
 
-void deviceDisconnection(struct User* user, int* sd, fd_set* master) {
+/*
+    Funzione invocata quando un device con cui si sta chattando
+    si disconnette. Si elimina la sua connessione dalla lista
+    degli utenti con cui si sta chattando.
+*/
+void deviceDisconnection(struct User* user, int* p2p_sd, fd_set* master) {
     
     // elimino la connessione con questo device
-    delConnFromChattingWithList(&user->users_chatting_with, sd, master);
+    delConnFromChattingWithList(&user->users_chatting_with, p2p_sd, master);
     printf("Il device ha chiuso la comunicazione.\n"); 
 
     // elimino questo elemento dalla lista di quelli con cui si sta chattando
-    delUserFromChattingWithList(&user->users_chatting_with, *sd);
+    delUserFromChattingWithList(&user->users_chatting_with, *p2p_sd);
     return;
 }
 
-int sendMessage(struct User* user, char* buffer, int* sd) {
+/*
+    Permette di inviare un messaggio o ai device nel caso di chat online
+    o al server nel caso di chat offline.
+*/
+int sendMessage(struct User* user, char* buffer, int* server_sd) {
 
     int ret;
     int len;
@@ -204,7 +230,7 @@ int sendMessage(struct User* user, char* buffer, int* sd) {
         
         // invio il messaggio a tutti i membri del gruppo
         ret = sendMessageToAll(&user->users_chatting_with, message);
-        if(ret < 0) { return 1; }
+        if(ret < 0) { free(message); return 1; }
         printf("*");
         fflush(stdout);
     } else {
@@ -215,8 +241,8 @@ int sendMessage(struct User* user, char* buffer, int* sd) {
         snprintf(message, len, "%s %s %s", user->my_username, user->dst_username, buffer);
         
         // invio al server il messaggio
-        ret = send_TCP(sd, message);
-        if(ret < 0) { return 1; }
+        ret = send_TCP(server_sd, message);
+        if(ret < 0) { free(message); return 1; }
     }
     
     // stampa di estetica
@@ -231,10 +257,16 @@ int sendMessage(struct User* user, char* buffer, int* sd) {
     return 0;
 }
 
+/*
+    Questa funzione viene invocata quando si riceve un messaggio
+    e permette di inviare il messaggio a tutti gli altri membri
+    del gruppo. 
+*/
 void sendMessageToOthers(struct usersChattingWith** users_chatting_with, int p2p_sd, char* buffer) {
 
     int ret;
 
+    // se la lista è vuota non faccio nulla
     if(users_chatting_with == NULL) {
         printf("\nLa lista è vuota.\n");
         return;
@@ -243,10 +275,14 @@ void sendMessageToOthers(struct usersChattingWith** users_chatting_with, int p2p
     // invio il messaggio ai componenti del gruppo (escluso il mittente)
     struct usersChattingWith* elem = *users_chatting_with;
     while(elem != NULL) {
+
+        // se ho trovato il mittente continuo
         if(elem->p2p_sd == p2p_sd) {
             elem = elem->next;
             continue;
         }
+
+        // invio il messaggio
         ret = send_TCP(&elem->p2p_sd, buffer);
         if(ret < 0) { printf("Impossibile inviare messaggio agli altri.\n"); }
         elem = elem->next;
@@ -254,6 +290,9 @@ void sendMessageToOthers(struct usersChattingWith** users_chatting_with, int p2p
     return;
 }
 
+/*
+    Permette di inviare un file ai device. 
+*/
 void shareFile(struct usersChattingWith** users_chatting_with, char* file_name) {
 
     FILE* fp;
@@ -301,7 +340,10 @@ void shareFile(struct usersChattingWith** users_chatting_with, char* file_name) 
     return;
 }
 
-void receiveFile(int* sd, char* file_name, struct User* user, fd_set* master) {
+/*
+    Permette di ricevere un file da un device.
+*/
+void receiveFile(int* p2p_sd, char* file_name, struct User* user, fd_set* master) {
 
     FILE* fp;
     int ret;
@@ -319,7 +361,7 @@ void receiveFile(int* sd, char* file_name, struct User* user, fd_set* master) {
     if(fp == NULL) { printf("Errore nell'apertura del file.\n"); free(file_path); return; }
    
     // ricevo il file
-    ret = receive_file(sd, fp);
+    ret = receive_file(p2p_sd, fp);
     
     // chiudo il file
     fclose(fp);
@@ -328,7 +370,7 @@ void receiveFile(int* sd, char* file_name, struct User* user, fd_set* master) {
     free(file_path);
     
     // in questo caso il device si è disconnesso mentre inviava il file
-    if(ret == -2) { deviceDisconnection(user, sd, master); return; }
+    if(ret == -2) { deviceDisconnection(user, p2p_sd, master); return; }
     if(ret == -1) { printf("Impossibile ricevere il file.\n"); return; }
 
     // stampa di informazione
@@ -337,6 +379,9 @@ void receiveFile(int* sd, char* file_name, struct User* user, fd_set* master) {
     return;
 }
 
+/*
+    Permette di inviare un file agli altri membri del gruppo.
+*/
 void sendFileToOthers(struct usersChattingWith** users_chatting_with, int p2p_sd, char* file_name) {
     
     int ret;
@@ -389,20 +434,25 @@ void sendFileToOthers(struct usersChattingWith** users_chatting_with, int p2p_sd
     return;
 }
 
-int newInput(struct User* user, struct onlineUser** online_user_list, int* sd, int* listener, fd_set* master, int* p2p_sd, struct sockaddr_in* dst_addr, int* fdmax, char* buffer) {
+/*
+    Funzione invocata quando arriva un nuovo input da tastiera. 
+    A seconda dello stato dell'utente si eseguono le funzioni.
+*/
+int newInput(struct User* user, struct onlineUser** online_user_list, int* server_sd, int* listener, fd_set* master, int* p2p_sd, struct sockaddr_in* dst_addr, int* fdmax, char* buffer) {
 
     int ret;
     char* file_name;
+    char* username;
 
     if(user->user_state == LOGGED) {
         
         // eseguo l'azione prevista dal comando
-        ret = executeDeviceCommand((char*)buffer, user, sd, NULL);
+        ret = executeDeviceCommand((char*)buffer, user, server_sd, NULL);
         if(ret == -2) {         // in questo caso il comando non è valido
             printf("Comando non valido.\n"); 
         } else if(ret == -3) {  // se il comando era out allora tolgo i 
                                 // socket dal set dei monitorati
-            clearMaster(sd, listener, master);
+            clearMaster(server_sd, listener, master);
             return -1;
         } else if(ret == -4) {  // in questo caso il destinatario non è online
                                 // quindi i messaggi verranno salvati sul server
@@ -426,20 +476,33 @@ int newInput(struct User* user, struct onlineUser** online_user_list, int* sd, i
             delOnlineUserList(online_user_list);
             
             // ricevo dal server la lista degli utenti online
-            ret = getOnlineUsers(sd, user, online_user_list, buffer);
+            ret = getOnlineUsers(server_sd, user, online_user_list, buffer);
             if(ret == 1) { return 1; }
             
             // stampo delle informazioni
             printf("\nPer aggiungere un utente alla chat di gruppo digitare: \\a username + INVIO\n> ");
             fflush(stdout);
+
+            // pulisco il buffer
+            memset(buffer, '\0', BUFFER_SIZE);
             return 1;
         } 
 
         // 2. controllo se l'utente ha richiesto di aggiungere un membro al gruppo
         if(!strncmp(buffer, "\\a", 2) && user->user_state == CHATTING_ONLINE) {
             
+            // prelevo l'username
+            username = strtok(buffer, " ");
+            username = strtok(NULL, " ");
+
+            // controllo che abbia inserito l'username
+            if(username == NULL) { printf("Username non inserito.\n> "); fflush(stdout); return 1; }
+
             // aggiungo l'utente al gruppo
-            newGroupMember(user, online_user_list, buffer, master, fdmax);
+            newGroupMember(user, online_user_list, username, master, fdmax);
+
+            // pulisco il buffer
+            memset(buffer, '\0', BUFFER_SIZE);
             return 1;
         }
         
@@ -447,7 +510,10 @@ int newInput(struct User* user, struct onlineUser** online_user_list, int* sd, i
         if(!strncmp(buffer, "\\q", 2)) {
             
             // termino la chat
-            ret = quitChat(user, online_user_list, p2p_sd, master, sd);
+            ret = quitChat(user, online_user_list, p2p_sd, master, server_sd);
+            
+            // pulisco il buffer
+            memset(buffer, '\0', BUFFER_SIZE);
             return ret;
         }
 
@@ -458,7 +524,7 @@ int newInput(struct User* user, struct onlineUser** online_user_list, int* sd, i
             file_name = strtok(NULL, " ");
 
             // controllo che l'utente abbia inserito il nome del file
-            if(file_name == NULL) { printf("Nome del file non specificato.\n"); return 1; }
+            if(file_name == NULL) { printf("Nome del file non specificato.\n> "); fflush(stdout); return 1; }
             
             // invio il file a tutti i componenti del gruppo
             shareFile(&user->users_chatting_with, file_name);
@@ -470,7 +536,7 @@ int newInput(struct User* user, struct onlineUser** online_user_list, int* sd, i
         
         // 5. se ho passato tutti i controlli allora invio il
         //    messaggio o al server o a tutti i membri del gruppo
-        ret = sendMessage(user, buffer, sd);
+        ret = sendMessage(user, buffer, server_sd);
         return ret;
     }  
 
@@ -481,7 +547,7 @@ int newInput(struct User* user, struct onlineUser** online_user_list, int* sd, i
     Gestione dei descrittori pronti 
     tramite l'io multiplexing 
 */
-void ioMultiplexing(struct User* user, struct onlineUser** online_user_list, int listener, int* sd, char* buffer) {
+void ioMultiplexing(struct User* user, struct onlineUser** online_user_list, int listener, int* server_sd, char* buffer) {
     
     int p2p_sd;
     struct sockaddr_in src_addr;
@@ -494,20 +560,31 @@ void ioMultiplexing(struct User* user, struct onlineUser** online_user_list, int
     int fdmax;
     int i;
 
+    // azzero i set
     FD_ZERO(&master);
     FD_ZERO(&read_fds);
 
+    // aggiungo lo standard input, il listener del device e il
+    // socket per la comunicazione col server al set dei monitorati
     FD_SET(STANDARD_INPUT, &master);
     FD_SET(listener, &master);
-    FD_SET(*sd, &master);
-    fdmax = *sd;
+    FD_SET(*server_sd, &master);
+    
+    // tengo traccia del maggiore
+    fdmax = *server_sd;
 
     for(;;) {
-        read_fds = master;
+        // read_fds sarà modificato dalla select
+        read_fds = master; 
         ret = select(fdmax + 1, &read_fds, NULL, NULL, NULL);
         if(ret < 0) { perror("Error0 select"); }
+
+        // scorro il set dei monitorati
         for(i = 0; i <= fdmax; i++) {
+            // se ho trovato un descrittore pronto
             if(FD_ISSET(i, &read_fds)) {
+
+                // se è il listener
                 if(i == listener) {
                     
                     // accetto la nuova richiesta di connessione da
@@ -529,7 +606,7 @@ void ioMultiplexing(struct User* user, struct onlineUser** online_user_list, int
                     // stampa di estetica
                     printf("> ");
                     fflush(stdout);
-                } else if(i == STANDARD_INPUT) {
+                } else if(i == STANDARD_INPUT) { // se è lo standard input
                     
                     // prelievo il comando dallo standard input e lo salvo nel buffer
                     read(STANDARD_INPUT, (void*)buffer, BUFFER_SIZE);
@@ -537,12 +614,12 @@ void ioMultiplexing(struct User* user, struct onlineUser** online_user_list, int
                     buffer[len - 1] = '\0';
 
                     // eseguo la funzione che gestirà l'input
-                    ret = newInput(user, online_user_list, sd, &listener, &master, &p2p_sd, &dst_addr, &fdmax, buffer);
+                    ret = newInput(user, online_user_list, server_sd, &listener, &master, &p2p_sd, &dst_addr, &fdmax, buffer);
                     if(ret == -1) { return; }
                     else if(ret == 1) { continue; }
                     else if(ret == 2) { break; }
                     
-                } else {
+                } else { // altrimenti è un p2p_sd
                     
                     // pulisco il buffer
                     memset(buffer, '\0', BUFFER_SIZE);
@@ -558,8 +635,8 @@ void ioMultiplexing(struct User* user, struct onlineUser** online_user_list, int
                         // disconnetto il device
                         deviceDisconnection(user, &i, &master);
 
-                        // se la lista degli utenti con cui si sta chattando è vuota
-                        // riporto lo stato dell'utente a LOGGED
+                        // se la lista degli utenti con cui si sta chattando
+                        // è vuota riporto lo stato dell'utente a LOGGED
                         if(user->users_chatting_with == NULL) { user->user_state = LOGGED; }
                         else { printf("> "); fflush(stdout); }
                         
@@ -605,7 +682,7 @@ void ioMultiplexing(struct User* user, struct onlineUser** online_user_list, int
 
 int main(int argc, char *argv[]) {
 
-    int sd;
+    int server_sd;
     struct sockaddr_in server_addr;
     int listener;
     struct sockaddr_in my_addr;
@@ -621,7 +698,7 @@ int main(int argc, char *argv[]) {
         return 0;
     } 
 
-    // imposto lo stato e la porta dell'utente
+    // inizializzo i dati dell'utente
     user.user_state = DISCONNECTED;
     len = strlen(argv[1]);
     user.my_port = malloc(len + 1);
@@ -648,7 +725,7 @@ int main(int argc, char *argv[]) {
         buffer[len-1] = '\0'; // per togliere il \n
         
         // eseguo l'azione prevista dal comando
-        ret = executeDeviceCommand((char*)&buffer, &user, &sd, &server_addr);
+        ret = executeDeviceCommand((char*)&buffer, &user, &server_sd, &server_addr);
         if(ret == -1) { printf("Comando non valido.\n"); }
         
         // pulisco il buffer
@@ -659,17 +736,17 @@ int main(int argc, char *argv[]) {
     }
 
     // ricevo le notifiche mentre ero offline
-    receiveNotifications(&sd, (char*)&buffer);
+    receiveNotifications(&server_sd, (char*)&buffer);
 
     // pulisco il buffer
     memset(&buffer, '\0', BUFFER_SIZE);
 
     // faccio partire l'io multiplexing
-    ioMultiplexing(&user, &online_user_list, listener, &sd, (char*)&buffer);
+    ioMultiplexing(&user, &online_user_list, listener, &server_sd, (char*)&buffer);
 
     // disconnetto il socket di ascolto del device
     ret = disconnect_to(&listener);
-    if(ret == 0) { printf("Disconnessione listener avvenuta con successo!\n"); }
+    if(ret < 0) { printf("Errore durante la disconnessione del listener.\n"); }
 
     return 0;
 }

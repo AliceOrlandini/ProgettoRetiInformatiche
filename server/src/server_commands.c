@@ -6,99 +6,9 @@
 #include "./../include/server_consts.h"
 #include "./../../network/include/network.h"
 
-void addElemToOnlineUserList(struct onlineUser** online_user_list, char* username, char* port) {
-    
-    // aggiungo il nuovo utente in coda alla lista
-    struct onlineUser* new_user;
-    struct onlineUser* q;
-    struct onlineUser* p;
-    int len;
-
-    for(q = *online_user_list; q != NULL; q = q->next) {
-        p = q;
-    }
-    // inizializzo il nuovo utente
-    new_user = malloc(sizeof(struct onlineUser));
-
-    // inizializzo i dati del nuovo utente
-    len = strlen(username);
-    new_user->username = malloc(len + 1);
-    strncpy(new_user->username, username, len);
-    new_user->username[len] = '\0';
-
-    len = strlen(port);
-    new_user->port = malloc(len + 1);
-    strncpy(new_user->port, port, len);
-    new_user->port[len] = '\0';
-
-    new_user->next = NULL;
-    if(q == *online_user_list)
-        *online_user_list = new_user;
-    else 
-        p->next = new_user;
-
-    return;
-}
-
-void delOnlineUserList(struct onlineUser** online_user_list) {
-    
-    struct onlineUser *del_user;
-    while(*online_user_list != NULL) {
-        del_user = (*online_user_list)->next;
-        free((*online_user_list)->username);
-        free((*online_user_list)->port);
-        free(*online_user_list);
-        *online_user_list = del_user;
-    }
-    printf("Lista dei messaggi pendenti eliminata con successo!\n");
-}
-
-void printOnlineUserList(struct onlineUser** online_user_list) {
-    
-    printf("PUNTATORE: %p\n", *online_user_list);
-    if(*online_user_list == NULL) {
-        printf("\nLa lista è vuota.\n");
-        return;
-    }
-
-    struct onlineUser* elem = *online_user_list;
-    while(elem != NULL) {
-        printf("\nUSERNAME: %s\n", elem->username);
-        printf("PORT: %s\n", elem->port);
-
-        /*printf("\nUSERNAME2: %s\n", (*online_user_list)->username);
-        printf("PORT2: %s\n", (*online_user_list)->port);*/
-        elem = elem->next;
-    }
-    printf("FINE\n");
-    return;
-}
-
-void delUserFromOnlineUserList(struct onlineUser** online_user_list, char* username) {
-    
-    int len;
-
-    if(*online_user_list == NULL) {
-        return;
-    }
-
-    len = (strlen((*online_user_list)->username) > strlen(username))? strlen((*online_user_list)->username):strlen(username);
-    if(!strncmp((*online_user_list)->username, username, len)) {
-        struct onlineUser* elem = *online_user_list;
-        *online_user_list = (*online_user_list)->next;
-        
-        // elimino la memoria allocata per il messaggio
-        free(elem->username);
-        free(elem->port);
-
-        delUserFromOnlineUserList(online_user_list, username);
-    } else {
-        delUserFromOnlineUserList(&(*online_user_list)->next, username);
-    }
-}
-
 /* 
-    Stampa i comandi che il server ha a disposizione 
+    Stampa i comandi che il server ha a disposizione
+    con una breve descrizione del funzionamento.
 */
 void printCommands() {
     printf("\nI comandi disponibili sono:\n1) help --> mostra i dettagli dei comandi.\n2) list --> mostra un elenco degli utenti connessi.\n3) esc  --> chiude il server.\n");
@@ -106,32 +16,74 @@ void printCommands() {
 }
 
 /* 
-    Stampa le info dei comandi disponibili 
+    Stampa più info dei comandi che 
+    il server ha a disposizione.
 */
 void help() {
-    printf("\nEcco le info dei comandi:\n-list: mostra l'elenco degli utenti connessi nel formato \"username*timestamp*porta\".\n-esc: termina il server.\n\n");
+    printf("\nEcco le info dei comandi:\n-list: mostra l'elenco degli utenti connessi nel formato \"username * timestamp * porta\".\n-esc: termina il server.\n\n");
     return;
 }
 
-/* */
+/* 
+    Mostra l'elenco degli utenti connessi. Per fare ciò, scorre
+    il file db_users.txt e controlla se il campo timestamp_logout
+    è impostato a NULL. In caso affermativo, stampa a schermo
+    l'username, il timestamp_login e la porta. 
+*/
 void list() {
     
+    int ret;
+    FILE* fp;
+    char file_line[64];
+    char* username;
+    char* password;
+    char* port;
+    char* timestamp_login;
+    char* timestamp_logout;
+
+    // apro il file db_users.txt in lettura
+    fp = fopen("./server/files/db_users.txt", "r"); 
+    if(fp == NULL) { printf("Error0 chat\n"); return; }
+
+    // se l'utente è online allora avrà campo NULL nel file
+    while (fgets(file_line, sizeof(file_line), fp) != NULL) {
+        
+        // ricavo i dati dell'utente
+        username = strtok(file_line, " ");
+        password = strtok(NULL, " ");
+        port = strtok(NULL, " ");
+        timestamp_login = strtok(NULL, " ");
+        timestamp_logout = strtok(NULL, " ");
+
+        // controllo se il timestamp_logout è NULL
+        if(!strncmp(timestamp_logout, "NULL", 4)) {
+            printf("\n%s * %s * %s", username, timestamp_login, port);
+        }
+    }
+    printf("\n");
+
+    // chiudo il file
+    fclose(fp);
+    return;
 }
 
 /* 
-    Chiude il server
+    Esegue la disconnessione del socket sd dedicato
+    ad ascoltare le richieste provenienti dai device.
 */
 void esc(int* sd) {
     
     int ret; 
     
+    // chiamo la funzione per disconnettere il socket
     ret = disconnect_to(sd);
     if(ret == 0) { printf("Server disconnesso con successo!\n"); }
 
 }
 
 /* 
-    Verifica che il comando sia valido ed esecuzione della funzione corrispondente 
+    Verifica che il comando sia valido ed 
+    esegue della funzione corrispondente.
 */
 void executeServerCommand(char* buffer, int* sd) {
 
@@ -140,7 +92,9 @@ void executeServerCommand(char* buffer, int* sd) {
 
     // controllo che il comando sia valido 
     if(strcmp("help", server_command) && strcmp("list", server_command) && strcmp("esc", server_command)) {
+        
         printf("\nComando non valido.");
+        
         // mostro di nuovo i comandi disponibili
         printCommands();
         return;

@@ -10,8 +10,9 @@
 
 /*
     Permette ad un utente di effettuare il login.
-    Si salverà all'interno del file db_users.txt il fatto che l'utente
-    è online impostando il timestamp_logout a NULL.
+    Si imposta il campo timestamp_logout a NULL 
+    all'interno del file db_users.txt ad indicare
+    che l'utente è online.
 */
 void in(int* sd, char* dev_username, char* dev_password) {
     
@@ -30,15 +31,19 @@ void in(int* sd, char* dev_username, char* dev_password) {
 
     memset(&file_line, '\0', sizeof(file_line));
     
-    fp = fopen("./server/files/db_users.txt", "r+"); // apro il file sia in lettura che in scrittura
+    // apro il file db_users.txt sia in lettura che in scrittura
+    fp = fopen("./server/files/db_users.txt", "r+");
     if(fp == NULL) { printf("Error0 in\n"); return; }
 
     // verifico che il device sia effettivamente registrato
     while (fgets(file_line, sizeof(file_line), fp) != NULL) {
 
+        // aggiorno queste variabili che serviranno per
+        // andare a sovrascrivere il timestamp_logout
         last_len = strlen(file_line);
         position += last_len;
     
+        // prelevo i dati per effettuare l'autentificazione
         username = strtok(file_line, " ");
         password = strtok(NULL, " ");
         port = strtok(NULL, " ");
@@ -59,6 +64,7 @@ void in(int* sd, char* dev_username, char* dev_password) {
             fseek(fp, position, SEEK_SET);
             fprintf(fp, "%s %s %s %s NULL    ", username, password, port, timestamp_login);
 
+            // chiudo il file
             fclose(fp);
 
             // comunico all'utente che il login è stato effettuato
@@ -70,9 +76,10 @@ void in(int* sd, char* dev_username, char* dev_password) {
         }
     }
 
+    // chiudo il file
     fclose(fp);
 
-    // comunico all'utente che l'username o password non sono validi
+    // comunico all'utente che l'username o la password non sono validi
     ret = send_TCP(sd, "no");
     if(ret < 0) { printf("Error1 in\n"); } 
 
@@ -80,7 +87,7 @@ void in(int* sd, char* dev_username, char* dev_password) {
 }
 
 /*
-    Permette a un utente di registrarsi un username e una password.
+    Permette a un utente di registrarsi con un username e una password.
     Per fare ciò si aggiunge una riga nel file db_users.txt contenente
     le informazioni dell'utente.
 */
@@ -91,7 +98,7 @@ void signup(int* sd, char* dev_username, char* dev_password, char* dev_port) {
     char timestamp_login[TIMESTAMP_SIZE];
     FILE *fp;
 
-    // apro il file db_users in append
+    // apro il file db_users.txt in append
     fp = fopen("./server/files/db_users.txt", "a");
     if(fp == NULL) { printf("Error0 signup\n"); return; }
 
@@ -129,7 +136,9 @@ void hanging(int* sd, struct pendingMessage** pending_message_list) {
     int i;
     char* message;
     int ret;
+    struct pendingMessage* elem = NULL;
 
+    // controllo se la lista dei messaggi pendenti è vuota
     if(*pending_message_list == NULL) {
 
         // mando al client l'informazione che nessuno gli ha inviato messaggi
@@ -148,7 +157,9 @@ void hanging(int* sd, struct pendingMessage** pending_message_list) {
         timestamp[i] = NULL;
     }
 
-    struct pendingMessage* elem = *pending_message_list;
+    // scorro la lista dei messaggi pendenti e per ogni utente
+    // salvo il numero di messaggi inviati
+    elem = *pending_message_list;
     while(elem != NULL) {
         for(i = 0; i < 32; i++) {
             // se l'username in lista è NULL allora mi salvo il nuovo utente
@@ -160,6 +171,8 @@ void hanging(int* sd, struct pendingMessage** pending_message_list) {
                 break;
             } 
 
+            // se trovo un utente già salvato incremento il numero di 
+            // messaggi e il timestamp del messaggio più recente
             len = (strlen(username[i]) > strlen(elem->username_src))? strlen(username[i]):strlen(elem->username_src);
             if(!strncmp(username[i], elem->username_src, len)) {
                 num_messages[i]++;
@@ -197,6 +210,9 @@ void hanging(int* sd, struct pendingMessage** pending_message_list) {
 
 /*
     Funzione per verificare se un utente è online o meno.
+    Per fare ciò, scorre il file db_users.txt e controlla
+    se il campo timestamp_logout dell'utente specificato
+    nel parametro è NULL.
 */
 bool checkOnline(char* dst_username, char* port) {
     
@@ -210,6 +226,7 @@ bool checkOnline(char* dst_username, char* port) {
     char* timestamp_login;
     char* timestamp_logout;
 
+    // apro il file db_users.txt in lettura
     fp = fopen("./server/files/db_users.txt", "r"); 
     if(fp == NULL) { printf("Error0 chat\n"); return false; }
 
@@ -219,20 +236,26 @@ bool checkOnline(char* dst_username, char* port) {
         // ricavo i dati del destinatario
         username = strtok(file_line, " ");
         password = strtok(NULL, " ");
+
+        // la porta la salvo nel parametro passato nella funzione
         tmp_port = strtok(NULL, " ");
         memcpy(port, tmp_port, strlen(tmp_port));
         *(port + strlen(tmp_port)) = '\0';
+
         timestamp_login = strtok(NULL, " ");
         timestamp_logout = strtok(NULL, " ");
 
+        // controllo se il timestamp del logout dell'utente 
+        // specificato per parametro è NULL, nel caso ritorno true
         username_len = (strlen(username) > strlen(dst_username))? strlen(username):strlen(dst_username);
-        
-        // controllo se il timestamp del logout è NULL
         if(!strncmp(timestamp_logout, "NULL", 4) && !strncmp(dst_username, username, username_len)) {
+            // chiudo il file
             fclose(fp);
             return true;
         }
     }
+
+    // chiudo il file e libero la memoria allocata per la porta
     fclose(fp);
     return false;
 }
@@ -241,6 +264,8 @@ bool checkOnline(char* dst_username, char* port) {
     Permette all'utente di ricevere i messaggi pendenti da dst_username.
     Per fare ciò si scorre la lista dei messaggi pendenti e si inviano 
     al client. 
+    Informa inoltre il mittente che i suoi messaggi sono stati letti.
+    Infine elimina quei messaggi dalla lista e dal file.
 */
 void show(int* sd, struct pendingMessage** pending_message_list, char* src_username, char* my_username) {
     
@@ -256,6 +281,7 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* src_usern
     struct sockaddr_in dst_addr;
     FILE* fp;
 
+    // controllo se la lista è vuota
     if(*pending_message_list == NULL) {
         
         // mando al client l'informazione che questo utente non gli ha inviato messaggi
@@ -270,6 +296,8 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* src_usern
     // conto il numero di messaggi che src_username gli ha mandato
     elem = *pending_message_list;
     while(elem != NULL) {
+
+        // se ho trovato l'username nella lista incremento il numero di messaggi
         username_len = (strlen(elem->username_src) > strlen(src_username))? strlen(elem->username_src):strlen(src_username);
         if(!strncmp(elem->username_src, src_username, username_len)) {
             num_messages++;
@@ -284,9 +312,10 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* src_usern
     if(ret < 0) { printf("Impossibile eseguire hanging.\n"); free(message); return; }
     free(message);
 
+    // se i messaggi erano zero termino
     if(num_messages == 0) { return; }
 
-    // invio al client tutti i messaggi ricevuti da src_username
+    // altrimenti invio al client tutti i messaggi ricevuti da src_username
     elem = *pending_message_list;
     while(elem != NULL) {
         username_len = (strlen(elem->username_src) > strlen(src_username))? strlen(elem->username_src):strlen(src_username);
@@ -307,28 +336,37 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* src_usern
         elem = elem->next;
     }
 
-    // controllo se l'utente src_username è online 
+    // controllo se l'utente src_username è online: 
     // in caso affermativo gli invio la notifica di avvenuta lettura dei messaggi
     // altrimenti mantengo l'informazione che verrà inviata quando tornerà online
     if(checkOnline(src_username, dst_port)) {
+        
+        // creo una connessione con il mittente
         ret = connect_to(&new_sd, &dst_addr, atoi(dst_port));
         if(ret < 0) { printf("Impossibile connettersi al device\n"); }
         else {
+            // invio il messaggio al mittente
             len = strlen(my_username) + 40;
             message = malloc(len);
             sprintf(message, "I messaggi inviati a %s sono stati letti!", my_username);
             ret = send_TCP(&new_sd, message);
             if(ret < 0) { printf("Impossibile inviare il messaggio\n"); }
+            
+            // libero la memoria allocata per il messaggio
             free(message);
+            // mi disconnetto dal mittente
             disconnect_to(&new_sd);
         }
     } else {
+        // apro il file db_notifications.txt in append
         fp = fopen("./server/files/db_notifications.txt", "a");
         if(fp == NULL) { printf("Error0 impossibile aprire il file notifications.txt\n"); return; }
 
+        // salvo il testo della notifica su file
         ret = fprintf(fp, "%s:I messaggi inviati a %s sono stati letti!\n", src_username, my_username);
         if(ret < 0) { printf("Error1 impossibile salvare la notifica\n"); return; }
 
+        // chiudo il file
         fclose(fp);
     }
 
@@ -340,8 +378,8 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* src_usern
 }
 
 /*
-    Scorre il file delle db_notifications.txt ed invia all'utente le sue notifiche.
-    Una volte inviate le elimina dal file.
+    Scorre il file delle db_notifications.txt ed invia all'utente 
+    le sue notifiche. Una volte inviate le elimina dal file.
 */
 void sendNotifications(int* sd, char* my_username) {
 
@@ -355,6 +393,7 @@ void sendNotifications(int* sd, char* my_username) {
     int ret;
     int len;
 
+    // apro il file db_notifications.txt in lettura
     fp = fopen("./server/files/db_notifications.txt", "r");
     if(fp == NULL) { printf("Error0 sendNotifications\n"); return; }
 
@@ -363,6 +402,7 @@ void sendNotifications(int* sd, char* my_username) {
         username = strtok(file_line, ":");
         notification = strtok(NULL, "\n");
 
+        // se ho trovato l'username incremento il numero di notifiche
         username_len = (strlen(username) > strlen(my_username))? strlen(username):strlen(my_username);
         if(!strncmp(my_username, username, username_len)) {
             num_notifications++;
@@ -376,14 +416,18 @@ void sendNotifications(int* sd, char* my_username) {
     if(ret < 0) { printf("Impossibile inviare il numero di notifiche\n"); free(message); return; }
     free(message);
 
+    // se il numero di notifiche è zero termino
     if(num_notifications == 0) { fclose(fp); return; }
 
-    // invio al client tutte le notifiche 
+    // riavvolgo il file
     rewind(fp);
+
+    // invio al client tutte le notifiche 
     while (fgets(file_line, sizeof(file_line), fp) != NULL) {
         username = strtok(file_line, ":");
         notification = strtok(NULL, "\n");
 
+        // se ho trovato l'username invio la notifica
         username_len = (strlen(username) > strlen(my_username))? strlen(username):strlen(my_username);
         if(!strncmp(my_username, username, username_len)) {
             
@@ -410,7 +454,7 @@ void sendNotifications(int* sd, char* my_username) {
 
 /*
     Permette ad un utente di iniziare una chat con dst_username.
-    Se questo non dovesse essere online i messaggi verranno bufferizzati.
+    Se questo non dovesse essere online i messaggi verranno salvati.
 */
 int chat(int* sd, char* dst_username) {
     
@@ -435,7 +479,8 @@ int chat(int* sd, char* dst_username) {
 }
 
 /*
-    Permette di registrare l'ultimo accesso dell'utente sul file db_users.txt.
+    Permette ad un utente di disconnettersi.
+    Salva l'ultimo accesso sul file db_users.txt.
 */
 void out(char* dev_username) {
 
@@ -451,24 +496,25 @@ void out(char* dev_username) {
     char timestamp_logout[TIMESTAMP_SIZE];
     FILE *fp;
 
-    // apro il file db_users in append
-    fp = fopen("./server/files/db_users.txt", "r+"); // apro il file sia in lettura che in scrittura
+    // apro il file db_users.txt sia in lettura che in scrittura
+    fp = fopen("./server/files/db_users.txt", "r+"); 
     if(fp == NULL) { printf("Error0 signup\n"); return; }
 
     // scorro tutto il file finchè non trovo l'username
     while (fgets(file_line, sizeof(file_line), fp) != NULL) {
 
+        // queste variabili servono per sovrascrivere il timestamp_logout
         last_len = strlen(file_line);
         position += last_len;
 
+        // prelevo i dati dell'utente
         username = strtok(file_line, " ");
         password = strtok(NULL, " ");
         port = strtok(NULL, " ");
         timestamp_login = strtok(NULL, " ");
 
-        username_len = (strlen(username) > strlen(dev_username))? strlen(username):strlen(dev_username);
-
         // controllo se ho trovato l'username
+        username_len = (strlen(username) > strlen(dev_username))? strlen(username):strlen(dev_username);
         if(!strncmp(dev_username, username, username_len)) {
 
             // calcolo il timestamp del logout
@@ -481,13 +527,13 @@ void out(char* dev_username) {
 
             fprintf(fp, "%s %s %s %s %s", username, password, port, timestamp_login, timestamp_logout);
 
+            // chiudo il file
             fclose(fp);
 
             printf("%s ha effettuato il logout!\n", dev_username);
             return;
         }
     }
-
     return;
 }
 
@@ -502,6 +548,7 @@ void saveMessage(char* message) {
     time_t t;
     char timestamp[TIMESTAMP_SIZE];
 
+    // apro il file db_messages.txt in append
     fp = fopen("./server/files/db_messages.txt", "a");
     if(fp == NULL) { printf("Error0 saveMessage\n"); return; }
 
@@ -514,6 +561,7 @@ void saveMessage(char* message) {
     ret = fprintf(fp, "%s %s\n", timestamp, message);
     if(ret < 0) { printf("Error1 saveMessage\n"); return; }
 
+    // chiudo il file
     fclose(fp);
 
     return; 
@@ -521,10 +569,13 @@ void saveMessage(char* message) {
 
 /*
     Stampa il contenuto di un file.
+    Viene utilizzata a scopo di debug.
 */
 void printFile(FILE *fptr) {
+    
     char ch;
 
+    // prelevo un carattere da file e lo stampo
     while((ch = fgetc(fptr)) != EOF)
         putchar(ch);
 }
@@ -532,15 +583,19 @@ void printFile(FILE *fptr) {
 /*
     Elimina le righe di un file specificate nel vettore lines.
 */
-void deleteLine(FILE *srcFile, FILE *tempFile, int* lines, int num_messages) {
+void deleteLine(FILE *srcFile, FILE *tempFile, int* lines, int num_lines) {
+    
     char buffer[BUFFER_SIZE];
     int count = 1;
     int i;
     bool found;
 
+    // scorro tutto il file
     while ((fgets(buffer, BUFFER_SIZE, srcFile)) != NULL) {
         found = false;
-        for(i = 0; i < num_messages; i++) {
+        
+        // per ogni riga se la trovo la elimino
+        for(i = 0; i < num_lines; i++) {
             if (lines[i] == count) { found = true; break; } 
         }
         if(!found) { fputs(buffer, tempFile); }
@@ -574,15 +629,17 @@ void delMessagesFromFile(char* src_username, char* dst_username, int num_message
         lines[i] = 0;
     i = 0;
 
-    // apro i file
-    srcFile  = fopen("./server/files/db_messages.txt", "r");
+    // apro i file uno in lettura e uno in scrittura
+    srcFile = fopen("./server/files/db_messages.txt", "r");
     tempFile = fopen("./server/files/delete-line.txt", "w");
     if(srcFile == NULL || tempFile == NULL) { printf("Error0 delMessages\n"); return; }
 
+    // scorro il file sorgente
     while(fgets(file_line, sizeof(file_line), srcFile) != NULL) {
         
         line++;
 
+        // prelevo i dati dal file
         timestamp = strtok(file_line, " ");
         username_src = strtok(NULL, " ");
         username_dst = strtok(NULL, " ");
@@ -590,7 +647,8 @@ void delMessagesFromFile(char* src_username, char* dst_username, int num_message
         username_src_len = (strlen(src_username) > strlen(username_src))? strlen(src_username):strlen(username_src);
         username_dst_len = (strlen(dst_username) > strlen(username_dst))? strlen(dst_username):strlen(username_dst);
 
-        // controllo se ho trovato un messaggio da dst_username a src_username
+        // controllo se ho trovato un messaggio da dst_username a src_username,
+        // in caso affermativo mi salvo la riga da eliminare nel vettore
         if(!strncmp(src_username, username_src, username_src_len) && !strncmp(dst_username, username_dst, username_dst_len)) {
             lines[i] = line;
             i++;
@@ -635,8 +693,8 @@ void delNotificationsFromFile(char* src_username, int num_notifications) {
         lines[i] = 0;
     i = 0;
 
-    // apro i file
-    srcFile  = fopen("./server/files/db_notifications.txt", "r");
+    // apro i file uno in lettura e uno in scrittura
+    srcFile = fopen("./server/files/db_notifications.txt", "r");
     tempFile = fopen("./server/files/delete-line.txt", "w");
     if(srcFile == NULL || tempFile == NULL) { printf("Error0 delMessages\n"); return; }
 
@@ -644,11 +702,13 @@ void delNotificationsFromFile(char* src_username, int num_notifications) {
         
         line++;
 
+        // prelevo l'username da file
         username_src = strtok(file_line, ":");
 
         username_src_len = (strlen(src_username) > strlen(username_src))? strlen(src_username):strlen(username_src);
 
-        // controllo se ho trovato la notifica
+        // controllo se ho trovato la notifica, in caso affermativo
+        // mi salvo la riga da eliminare
         if(!strncmp(src_username, username_src, username_src_len)) {
             lines[i] = line;
             i++;
@@ -672,7 +732,9 @@ void delNotificationsFromFile(char* src_username, int num_notifications) {
 }
 
 /*
-    Invia all'utente la lista degli online.
+    Invia all'utente la lista degli online. Per fare ciò,
+    scorre il file db_users.txt e preleva gli utenti che 
+    hanno il timestamp_logout a NULL.
 */
 void sendOnlineUsers(int* sd) {
     
@@ -688,12 +750,14 @@ void sendOnlineUsers(int* sd) {
     char* message;
     int len;
 
+    // apro il file db_users.txt in lettura
     fp = fopen("./server/files/db_users.txt", "r"); 
     if(fp == NULL) { printf("Error0 chat\n"); return; }
 
     // se l'utente è online allora avrà campo NULL nel file
     while (fgets(file_line, sizeof(file_line), fp) != NULL) {
         
+        // prelevo i dati dell'utente
         username = strtok(file_line, " ");
         password = strtok(NULL, " ");
         port = strtok(NULL, " ");
@@ -713,12 +777,16 @@ void sendOnlineUsers(int* sd) {
     if(ret < 0) { printf("Impossibile inviare il numero di utenti online\n"); free(message); return; }
     free(message);
 
+    // se il numero degli online era zero termino
     if(num_online == 0) { fclose(fp); return; }
 
-    // invio al client tutti gli utenti online 
+    // riavvolgo il file
     rewind(fp);
+
+    // invio al client tutti gli utenti online 
     while (fgets(file_line, sizeof(file_line), fp) != NULL) {
         
+        // prelevo i dati dell'utente
         username = strtok(file_line, " ");
         password = strtok(NULL, " ");
         port = strtok(NULL, " ");
@@ -741,13 +809,12 @@ void sendOnlineUsers(int* sd) {
             free(message);
         }
     }
-
     return;
 }
 
 /*
-    Gestione della richiesta del device, a seconda
-    del comando ricevuto si invoca la funzione corrispondente.
+    Gestione della richiesta del device, a seconda del
+    comando ricevuto invoca la funzione corrispondente.
 */
 int serveDeviceRequest(int* sd, char* request, char** username, struct pendingMessage** pending_message_list) {
 
