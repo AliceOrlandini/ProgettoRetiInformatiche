@@ -4,18 +4,25 @@
 
 #include "./../include/pending_messages.h"
 
+/*
+    Permette di aggiungere un nuovo messaggio alla lista
+    dei messaggi pendenti specificata come parametro della
+    funzione. L'inserimento avviene in coda per ordinare
+    i messaggi dal più vecchio al più nuovo.
+*/
 void addElemToPMList(struct pendingMessage** pending_message_list, char* username, char* timestamp, char* message) {
     
-    // aggiungo il nuovo messaggio in coda alla lista
     struct pendingMessage* new_message;
     struct pendingMessage* q;
     struct pendingMessage* p;
     int len;
 
+    // scorro la lista fino a raggiungere il fondo
     for(q = *pending_message_list; q != NULL; q = q->next) {
         p = q;
     }
-    // inizializzo il nuovo messaggio
+    
+    // creo il nuovo messaggio
     new_message = malloc(sizeof(struct pendingMessage));
 
     // inizializzo i dati del nuovo messaggio
@@ -35,6 +42,8 @@ void addElemToPMList(struct pendingMessage** pending_message_list, char* usernam
     new_message->message[len] = '\0';
 
     new_message->next = NULL;
+
+    // inserisco il nuovo messaggio in coda
     if(q == *pending_message_list)
         *pending_message_list = new_message;
     else 
@@ -43,6 +52,10 @@ void addElemToPMList(struct pendingMessage** pending_message_list, char* usernam
     return;
 }
 
+/*
+    Permette di eliminare tutta la 
+    lista dei messaggi pendenti.
+*/
 void delPMList(struct pendingMessage** pending_message_list) {
     
     struct pendingMessage *del_user;
@@ -55,25 +68,40 @@ void delPMList(struct pendingMessage** pending_message_list) {
         *pending_message_list = del_user;
     }
     printf("Lista dei messaggi pendenti eliminata con successo!\n");
+    return; 
 }
 
+/*
+    Funzione che stampa username, timestamp e messaggio
+    di ogni elemento presente nella lista dei messaggi 
+    pendenti. Questa funzione viene utilizzata solo in 
+    fase di debugging del codice.
+*/
 void printPMList(struct pendingMessage** pending_message_list) {
     
+    struct pendingMessage* elem;
+
+    // se la lista è vuota non faccio nulla
     if(*pending_message_list == NULL) {
         return;
     }
 
-    struct pendingMessage* elem = *pending_message_list;
+    elem = *pending_message_list;
     while(elem != NULL) {
-        printf("USERNAME: %s\n", elem->username_src);
-        printf("TIMESTAMP: %s\n", elem->timestamp);
-        printf("MESSAGE: %s\n", elem->message);
+        printf("username: %s\n", elem->username_src);
+        printf("timestamp: %s\n", elem->timestamp);
+        printf("messagge: %s\n", elem->message);
         elem = elem->next;
     }
-    printf("FINE\n");
+    printf("end print\n");
     return;
 }
 
+/*
+    Funzione per creare la lista dei messaggi pendenti
+    relativa ad un utente specificato per parametro.
+    I messaggi vengono prelevati dal file db_messages.txt.
+*/
 void createPMList(struct pendingMessage** pending_message_list, char* dev_username) {
     
     FILE* fp;
@@ -87,6 +115,7 @@ void createPMList(struct pendingMessage** pending_message_list, char* dev_userna
     fp = fopen("./server/files/db_messages.txt", "r");
     if(fp == NULL) { printf("Error0 hanging\n"); return; }
 
+    // prelevo una riga del file
     while (fgets(file_line, sizeof(file_line), fp) != NULL) {
         timestamp = strtok(file_line, " ");
         username_src = strtok(NULL, " ");
@@ -97,37 +126,47 @@ void createPMList(struct pendingMessage** pending_message_list, char* dev_userna
 
         // controllo se ho trovato l'username dell'utente
         if(!strncmp(dev_username, username_dst, username_dst_len)) {
+            
             // aggiungo il messaggio alla lista dei messaggi pendenti
             addElemToPMList(pending_message_list, username_src, timestamp, message);
         }
     } 
 
+    // chiudo il file
     fclose(fp);
 
-    // stampa di controllo
+    // stampa di debugging
     // printPMList(pending_message_list);
 }
 
+/*
+    Permette di eliminare tutti i messaggi che hanno come 
+    mittente l'utente specificato come parametro.
+*/
 void delMessagesFromPMList(struct pendingMessage** pending_message_list, char* username) {
     
     int len;
 
+    // se la lista è vuota non faccio nulla
     if(*pending_message_list == NULL) {
         return;
     }
 
+    // se ho trovato l'username del mittente allora elimino quel messaggio
     len = (strlen((*pending_message_list)->username_src) > strlen(username))? strlen((*pending_message_list)->username_src):strlen(username);
     if(!strncmp((*pending_message_list)->username_src, username, len)) {
         struct pendingMessage* elem = *pending_message_list;
         *pending_message_list = (*pending_message_list)->next;
         
-        // elimino la memoria allocata per il messaggio
+        // libero la memoria allocata per il messaggio
         free(elem->username_src);
         free(elem->timestamp);
         free(elem->message);
 
+        // chiamo la funzione in modo ricorsivo
         delMessagesFromPMList(pending_message_list, username);
     } else {
         delMessagesFromPMList(&(*pending_message_list)->next, username);
     }
+    return; 
 }
