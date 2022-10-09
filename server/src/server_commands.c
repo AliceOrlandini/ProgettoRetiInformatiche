@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <signal.h>
 
 #include "./../include/server_commands.h"
 #include "./../include/server_consts.h"
 #include "./../../network/include/network.h"
+
 
 /* 
     Stampa i comandi che il server ha a disposizione
@@ -68,24 +71,35 @@ void list() {
 }
 
 /* 
-    Esegue la disconnessione del socket sd dedicato
+    Esegue la disconnessione del socket dedicato
     ad ascoltare le richieste provenienti dai device.
+    Inoltre, se ci sono processi figli attivi li elimina.
 */
-void esc(int* sd) {
+void esc(int* server_sd, struct child** child_list) {
     
     int ret; 
+
+    // scorro la lista dei processi figli e 
+    // se quel processo ancora esiste lo termino
+    ret = killChildren(child_list);
+    if(ret == -1) { return; }
+    
+    // se la kill è avvenuta elimino la lista dei processi figli
+    delChildList(child_list); 
     
     // chiamo la funzione per disconnettere il socket
-    ret = disconnect_to(sd);
+    ret = disconnect_to(server_sd);
     if(ret == 0) { printf("Server disconnesso con successo!\n"); }
-
+    
+    // termino anche il processo padre
+    exit(0);
 }
 
 /* 
     Verifica che il comando sia valido ed 
     esegue della funzione corrispondente.
 */
-void executeServerCommand(char* buffer, int* sd) {
+void executeServerCommand(char* buffer, int* sd, struct child** child_list) {
 
     char server_command[SERVER_COMMAND_SIZE];
     sscanf(buffer, "%s", server_command);
@@ -110,9 +124,7 @@ void executeServerCommand(char* buffer, int* sd) {
         printCommands();
     }
     else {
-        esc(sd);
-        exit(0);
+        esc(sd, child_list);
     }
-        
     return;
 }

@@ -89,6 +89,11 @@ int getOnlineUsers(int* server_sd, struct User* user, struct onlineUser** online
     
     // ricevo il numero di utenti online
     ret = receive_TCP(server_sd, buffer);
+    if(ret == -2) { 
+        printf("Il server si è disconnesso.\n"); 
+        disconnect_to(server_sd); 
+        return -1; 
+    }
     if(ret < 0) { printf("Impossibile ricevere la lista degli online"); return 1; }
     num_online = atoi(buffer);
     
@@ -102,6 +107,11 @@ int getOnlineUsers(int* server_sd, struct User* user, struct onlineUser** online
         
         // ricevo l'username e la porta dell'utente online
         ret = receive_TCP(server_sd, buffer);
+        if(ret == -2) { 
+            printf("Il server si è disconnesso.\n"); 
+            disconnect_to(server_sd); 
+            return -1; 
+        }
         if(ret < 0) { printf("Impossibile ricevere utente"); continue; }
     
         // prelevo i dati
@@ -142,6 +152,13 @@ void newGroupMember(struct User* user, struct onlineUser** online_user_list, cha
     port = getPortFromOnlineUserList(online_user_list, username);
     if(port == NULL) {
         printf("Questo utente non può essere inserito nel gruppo.\n> ");
+        fflush(stdout);
+        return;
+    }
+
+    // controllo se l'utente che si vuole aggiungere al gruppo è già nel gruppo
+    if(isInTheGroupYet(&user->users_chatting_with, username)) {
+        printf("Questo utente è già nel gruppo.\n> ");
         fflush(stdout);
         return;
     }
@@ -478,6 +495,7 @@ int newInput(struct User* user, struct onlineUser** online_user_list, int* serve
             // ricevo dal server la lista degli utenti online
             ret = getOnlineUsers(server_sd, user, online_user_list, buffer);
             if(ret == 1) { return 1; }
+            if(ret == -1) { return -1; }
             
             // stampo delle informazioni
             printf("\nPer aggiungere un utente alla chat di gruppo digitare: \\a username + INVIO\n> ");
@@ -619,6 +637,27 @@ void ioMultiplexing(struct User* user, struct onlineUser** online_user_list, int
                     else if(ret == 1) { continue; }
                     else if(ret == 2) { break; }
                     
+                } else if(i == *server_sd) {
+                    // pulisco il buffer
+                    memset(buffer, '\0', BUFFER_SIZE);
+
+                    // ricevo il messaggio dal server
+                    ret = receive_TCP(&i, (char*)buffer);
+                    // se ricevo -2 significa che il server si è disconnesso
+                    if(ret == -2) { 
+                        printf("Il server si è disconnesso\n"); 
+                        
+                        // chiudo il socket e pulisco il set dei monitorati
+                        disconnect_to(server_sd); 
+                        FD_CLR(*server_sd, &master);
+                        
+                        // se l'utente stava chattando faccio una stampa di estetica
+                        if(user->user_state == CHATTING_ONLINE || user->user_state == CHATTING_OFFLINE) {
+                            printf("> ");
+                            fflush(stdout);
+                        }
+                        continue; 
+                    }
                 } else { // altrimenti è un p2p_sd
                     
                     // pulisco il buffer
@@ -743,6 +782,12 @@ int main(int argc, char *argv[]) {
 
     // faccio partire l'io multiplexing
     ioMultiplexing(&user, &online_user_list, listener, &server_sd, (char*)&buffer);
+
+    // libero la memoria allocata per i dati dell'utente
+    free(user.my_username);
+    free(user.my_password);
+    free(user.srv_port);
+    free(user.my_port);
 
     // disconnetto il socket di ascolto del device
     ret = disconnect_to(&listener);

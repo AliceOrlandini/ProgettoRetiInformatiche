@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 
 #include "./../include/device_commands.h"
 #include "./../include/device_consts.h"
@@ -47,6 +48,12 @@ int signup(char* command, struct User* user, int* server_sd, struct sockaddr_in*
 
     // aspetto che il server mi comunichi che la registrazione è avvenuta con successo
     ret = receive_TCP(server_sd, message); 
+    if(ret == -2) { 
+        printf("Il server si è disconnesso.\n"); 
+        disconnect_to(server_sd); 
+        free(message);
+        return -1; 
+    }
     if(strncmp(message, "ok", 2)) {
         printf("Impossibile eseguire la registrazione.\n"); free(message); return -1;
     }
@@ -85,6 +92,12 @@ int in(char* command, struct User* user, int* server_sd, struct sockaddr_in* ser
 
     // aspetto che il server mi comunichi che il login è avvenuto con successo
     ret = receive_TCP(server_sd, message); 
+    if(ret == -2) { 
+        printf("Il server si è disconnesso.\n"); 
+        disconnect_to(server_sd); 
+        free(message); 
+        return -1; 
+    }
     if(ret < 0) { printf("Errore nella ricezione del messaggio dal server.\n"); free(message); return -1; }
 
     if(!strncmp(message, "no", 2)) {
@@ -109,7 +122,7 @@ int in(char* command, struct User* user, int* server_sd, struct sockaddr_in* ser
     Per ogni utente il comando mostra username, il numero di
     messaggi pendenti in ingresso e il timestamp del più recente.
 */
-void hanging(char* command, int* sd) {
+void hanging(char* command, int* server_sd) {
     
     int ret;
     char buffer[BUFFER_SIZE];
@@ -117,14 +130,15 @@ void hanging(char* command, int* sd) {
     int i;
 
     // invio al server il comando
-    ret = send_TCP(sd, command);
+    ret = send_TCP(server_sd, command);
     if(ret < 0) { printf("Impossibile eseguire hanging.\n"); return; }
 
     // pulisco il buffer
     memset(&buffer, '\0', BUFFER_SIZE);
 
     // ricevo dal server il numero di utenti che hanno inviato messaggi
-    ret = receive_TCP(sd, buffer);
+    ret = receive_TCP(server_sd, buffer);
+    if(ret == -2) { printf("Il server si è disconnesso.\n"); disconnect_to(server_sd); return; }
     if(ret < 0) { printf("Impossibile eseguire hanging.\n"); return; }
     num_users = atoi(buffer);
     if(num_users == 0) {
@@ -140,7 +154,12 @@ void hanging(char* command, int* sd) {
         memset(&buffer, '\0', BUFFER_SIZE);
         
         // ricevo l'username dell'utente
-        ret = receive_TCP(sd, buffer);
+        ret = receive_TCP(server_sd, buffer);
+        if(ret == -2) { 
+            printf("Il server si è disconnesso.\n"); 
+            disconnect_to(server_sd); 
+            return; 
+        }
         if(ret < 0) { printf("Hanging: errore nella ricezione di una riga.\n"); continue; }
         
         // stampo le info
@@ -154,7 +173,7 @@ void hanging(char* command, int* sd) {
     Consente all'utente di ricevere i messaggi 
     pendenti dall'utente specificato come parametro.
 */
-void show(char* command, int* sd, char* username) {
+void show(char* command, int* server_sd, char* username) {
     
     int len;
     int ret;
@@ -169,7 +188,7 @@ void show(char* command, int* sd, char* username) {
     snprintf(message, len, "%s %s", command, username);
     
     // invio al server il messaggio
-    ret = send_TCP(sd, message);
+    ret = send_TCP(server_sd, message);
     if(ret < 0) { printf("Impossibile eseguire la show.\n"); free(message); return; }
     
     // libero la memoria utilizzata per il messaggio
@@ -179,7 +198,8 @@ void show(char* command, int* sd, char* username) {
     memset(&buffer, '\0', BUFFER_SIZE);
 
     // ricevo dal server il numero di messaggi ricevuti
-    ret = receive_TCP(sd, buffer);
+    ret = receive_TCP(server_sd, buffer);
+    if(ret == -2) { printf("Il server si è disconnesso.\n"); disconnect_to(server_sd); return; }
     if(ret < 0) { printf("Impossibile eseguire hanging.\n"); return; }
     num_messages = atoi(buffer);
     if(num_messages == 0) {
@@ -196,7 +216,12 @@ void show(char* command, int* sd, char* username) {
         memset(&buffer, '\0', BUFFER_SIZE);
         
         // ricevo il messaggio
-        ret = receive_TCP(sd, buffer);
+        ret = receive_TCP(server_sd, buffer);
+        if(ret == -2) { 
+            printf("Il server si è disconnesso.\n"); 
+            disconnect_to(server_sd); 
+            return; 
+        }
         if(ret < 0) { printf("Show: errore nella ricezione del messaggio.\n"); continue; }
         
         // stampo il messaggio
@@ -254,7 +279,7 @@ bool checkContacts(char* my_username, char* dst_username) {
     Se l'utente è online il server invierà la porta dell'utente, 
     altrimenti i messaggi verranno salvati sul server. 
 */
-int chat(char* command, int* sd, char* my_username, char* dst_username) {
+int chat(char* command, int* server_sd, char* my_username, char* dst_username) {
     
     int len;
     int ret;
@@ -272,14 +297,19 @@ int chat(char* command, int* sd, char* my_username, char* dst_username) {
     snprintf(message, len, "%s %s", command, dst_username);
     
     // invio al server il messaggio
-    ret = send_TCP(sd, message);
+    ret = send_TCP(server_sd, message);
     if(ret < 0) { printf("Impossibile iniziare la chat.\n"); return -1; }
 
     // pulisco il buffer per ricevere la risposta
     memset(&message, '\0', sizeof(message));
 
     // aspetto la risposta dal server
-    ret = receive_TCP(sd, message);
+    ret = receive_TCP(server_sd, message);
+    if(ret == -2) { 
+        printf("Il server si è disconnesso.\n"); 
+        disconnect_to(server_sd); 
+        return -1; 
+    }
     if(ret < 0) { printf("Errore durante la ricezione della risposta dal server\n"); return -1; }
     
     // controllo se il destinatario è offline
@@ -301,17 +331,17 @@ int chat(char* command, int* sd, char* my_username, char* dst_username) {
 void out(int* server_sd, struct User* user) {
     
     int ret;
+
+    // controllo se il descrittore del socket è attivo
+    // (potrebbe non essere attivo in caso di disconnessione del server)
+    ret = fcntl(*server_sd, F_GETFD);
+    if(ret == -1) { printf("Il server era già disconnesso\n"); return; }
     
     // invio la richiesta di disconnessione
     ret = disconnect_to(server_sd);
     if(ret == -1) { printf("Impossibile disconnettersi.\n"); }
     printf("Disconnessione avvenuta con successo!\n");
 
-    // libero la memoria allocata per i dati dell'utente
-    free(user->my_username);
-    free(user->my_password);
-    free(user->srv_port);
-    free(user->my_port);
 }
 
 /*
@@ -319,14 +349,19 @@ void out(int* server_sd, struct User* user) {
     Questa funzione viene eseguita quando il device inizia 
     la sua esecuzione.
 */
-void receiveNotifications(int* sd, char* buffer) {
+void receiveNotifications(int* server_sd, char* buffer) {
     
     int ret;
     int num_notifications;
     int i;
 
     // ricevo il numero di notifiche
-    ret = receive_TCP(sd, buffer);
+    ret = receive_TCP(server_sd, buffer);
+    if(ret == -2) { 
+        printf("Il server si è disconnesso.\n"); 
+        disconnect_to(server_sd); 
+        return; 
+    }
     if(ret < 0) { printf("Impossibile ricevere le notifiche\n"); return; }
 
     num_notifications = atoi(buffer);
@@ -342,7 +377,12 @@ void receiveNotifications(int* sd, char* buffer) {
         memset(buffer, '\0', BUFFER_SIZE);
         
         // ricevo la notifica
-        ret = receive_TCP(sd, buffer);
+        ret = receive_TCP(server_sd, buffer);
+        if(ret == -2) { 
+            printf("Il server si è disconnesso.\n"); 
+            disconnect_to(server_sd); 
+            return; 
+        }
         if(ret < 0) { printf("Impossibile ricevere la notifica\n"); continue; }
 
         printf("%s\n", buffer);
