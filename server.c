@@ -10,6 +10,7 @@
 
 #include "./server/include/server_consts.h"
 #include "./server/include/server_commands.h"
+#include "./server/include/child.h"
 #include "./server/include/device_requests.h"
 #include "./network/include/network.h"
 
@@ -31,6 +32,8 @@ void ioMultiplexing(int listener) {
     
     int ret;
     char buffer[BUFFER_SIZE];
+
+    struct child* child_list = NULL;
 
     FD_ZERO(&master);
     FD_ZERO(&read_fds);
@@ -56,19 +59,23 @@ void ioMultiplexing(int listener) {
                     }
             
                 } else if(i == STANDARD_INPUT) {
+                    
                     // prelievo il comando dallo standard input e lo salvo nel buffer
                     read(STANDARD_INPUT, (void*)&buffer, SERVER_COMMAND_SIZE);
                     
                     // eseguo l'azione prevista dal comando
-                    executeServerCommand((char*)&buffer, &listener);
-                
+                    executeServerCommand((char*)&buffer, &listener, &child_list);
+                    
                 } else { 
-
+                    // con la fork genero un nuovo processo 
                     pid = fork();
                     if(pid < 0) { perror("Error1 fork"); }
                     else if(pid == 0) { // sono nel processo figlio
+                        
+                        // chiudo il listener visto che sono nel figlio
                         close(listener);
 
+                        // inizializzo le variabili
                         char* username = NULL;
                         struct pendingMessage* pending_message_list = NULL;
 
@@ -131,7 +138,10 @@ void ioMultiplexing(int listener) {
                         // termino il processo figlio
                         exit(0);
                     } else { // sono nel processo padre
-                        
+
+                        // aggiungo il figlio nella lista 
+                        addChild(&child_list, pid);
+
                         // chiudo il socket di comunicazione
                         close(i);
                         // tolgo il descrittore del socket di comunicazione dal set dei monitorati
@@ -156,7 +166,7 @@ int main(int argc, char *argv[]) {
     
     // inizializzo il server
     ret = init_listener(&listener, &server_addr, srv_port);
-    if(ret < 0) { exit(0); }
+    if(ret < 0) { return 0; }
 
     // mostro i comandi disponibili 
     printCommands();

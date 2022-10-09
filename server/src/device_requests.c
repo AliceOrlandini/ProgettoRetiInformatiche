@@ -825,7 +825,7 @@ int serveDeviceRequest(int* sd, char* request, char** username, struct pendingMe
     int len;
     int ret;
 
-    printf("Richiesta ricevuta da un client %s\n", request);
+    printf("\nRichiesta ricevuta da un client %s\n", request);
     
     // prendo il comando inserito 
     command = strtok(request, " ");

@@ -17,3 +17,4 @@ int sendMessageToAll(struct usersChattingWith**, char*);
 void addNewConnToChattingWithList(struct usersChattingWith**, char*, in_port_t, int*);
 void delAllConnFromChattingWithList(struct usersChattingWith**, fd_set*);
 void delConnFromChattingWithList(struct usersChattingWith**, int*, fd_set*);
+bool isInTheGroupYet(struct usersChattingWith**, char*);

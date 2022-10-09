@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "./../../network/include/network.h"
 #include "./../include/users_chatting_with.h"
@@ -213,4 +214,32 @@ void delConnFromChattingWithList(struct usersChattingWith** users_chatting_with,
         elem = elem->next;
     }
     return;
+}
+
+/*
+    Funzione che restituisce true nel caso in cui l'utente passato come
+    parametro sia già nella chat di gruppo, false altrimenti.
+*/
+bool isInTheGroupYet(struct usersChattingWith** users_chatting_with, char* username) {
+
+    struct usersChattingWith* elem = NULL;
+    int len;
+
+    // se la lista è vuota restituisco false
+    if(*users_chatting_with == NULL) { return false; }
+
+    elem = *users_chatting_with;
+    while(elem != NULL) {
+        
+        // se trovo l'utente nella lista restituisco true
+        len = strlen(elem->dst_username) > strlen(elem->dst_username) ? strlen(elem->dst_username):strlen(elem->dst_username);
+        if(!strncmp(elem->dst_username, username, len)) {
+            return true;
+        }
+
+        elem = elem->next;
+    }
+    
+    // se non ho trovato l'utente restituisco false
+    return false;
 }
