@@ -10,7 +10,6 @@
 
 #include "./server/include/server_consts.h"
 #include "./server/include/server_commands.h"
-#include "./server/include/child.h"
 #include "./server/include/device_requests.h"
 #include "./network/include/network.h"
 
@@ -53,7 +52,8 @@ void ioMultiplexing(int listener) {
                     new_sd = accept(listener, (struct sockaddr*)&client_addr, (socklen_t*)&addrlen);
                     if(new_sd < 0) { perror("Error0 accept"); }
                     else {
-                        printf("Stabilita una connessione!\n");
+                        printf("\nStabilita una connessione!");
+                        fflush(stdout);
                         FD_SET(new_sd, &master);
                         if(new_sd > fdmax) { fdmax = new_sd; } 
                     }

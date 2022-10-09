@@ -336,13 +336,17 @@ void shareFile(struct usersChattingWith** users_chatting_with, char* file_name) 
     elem = *users_chatting_with;
     while(elem != NULL) {
         
+        // invio l'informazione che sto inviando il file
         ret = send_TCP(&elem->p2p_sd, message);
         if(ret < 0) { printf("Impossibile inviare il file a questo utente.\n"); elem = elem->next; continue; }
 
+        // invio il file
         ret = send_file(&elem->p2p_sd, fp);
         if(ret < 0) { printf("Impossibile inviare il file a questo utente.\n"); elem = elem->next; continue; }
 
+        // passo al prossimo elemento e riavvolgo il file
         elem = elem->next;
+        rewind(fp);
     }
 
     // libero la memoria allocata per il messaggio
@@ -368,13 +372,17 @@ void receiveFile(int* p2p_sd, char* file_name, struct User* user, fd_set* master
     char* file_path;
 
     // creo il path di dove andrà salvato il file
-    len = strlen(file_name) + 16;
+    len = strlen(file_name) + strlen(user->my_username) + 18;
     file_path = malloc(len);
-    strncpy(file_path, "./client/media/", 15);
-    strncat(file_path, file_name, len);
+    strncpy(file_path, "./client/media/", 16);
+    strncat(file_path, user->my_username, strlen(user->my_username));
+    strncat(file_path, "/", 2);
+    strncat(file_path, file_name, strlen(file_name));
     file_path[len - 1] = '\0';
+    printf("FILE_PATH: %s\n", file_path);
 
-    fp = fopen(file_path, "wb"); // apro il file in scrittura binaria
+    // apro il file in scrittura binaria
+    fp = fopen(file_path, "wb"); 
     if(fp == NULL) { printf("Errore nell'apertura del file.\n"); free(file_path); return; }
    
     // ricevo il file
@@ -411,7 +419,7 @@ void sendFileToOthers(struct usersChattingWith** users_chatting_with, int p2p_sd
     // creo il path di dove è salvato il file
     len = strlen(file_name) + 16;
     file_path = malloc(len);
-    strncpy(file_path, "./client/media/", 15);
+    strncpy(file_path, "./client/media/", 16);
     strncat(file_path, file_name, len);
     file_path[len - 1] = '\0';
 
@@ -432,19 +440,27 @@ void sendFileToOthers(struct usersChattingWith** users_chatting_with, int p2p_sd
     // invio il messaggio ai componenti del gruppo (escluso il mittente)
     elem = *users_chatting_with;
     while(elem != NULL) {
+
+        // non rimando il file a colui che me lo ha mandato
         if(elem->p2p_sd == p2p_sd) {
             elem = elem->next;
             continue;
         }
+
+        // invio l'informazione che sto per inviare un file
         ret = send_TCP(&elem->p2p_sd, message);
         if(ret < 0) { printf("Impossibile inviare il file a questo utente.\n"); elem = elem->next; continue; }
 
+        // invio il file
         ret = send_file(&elem->p2p_sd, fp);
         if(ret < 0) { printf("Impossibile inviare il file a questo utente.\n"); elem = elem->next; continue; }
 
+        // passo al prossimo elemento e riavvolgo il file
         elem = elem->next;
+        rewind(fp);
     }
 
+    // libero la memoria allocata per il messaggio e per il path
     free(message);
     free(file_path);
 
@@ -736,6 +752,8 @@ int main(int argc, char *argv[]) {
         printf("Error: porta device non specificata.\n");
         return 0;
     } 
+
+    printf("La tua porta è: %s\n", argv[1]);
 
     // inizializzo i dati dell'utente
     user.user_state = DISCONNECTED;

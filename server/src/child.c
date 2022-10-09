@@ -48,7 +48,6 @@ void delChildList(struct child** child_list) {
     }
 
     *child_list = NULL;
-    printf("Lista dei processi figli eliminata con successo!\n");
 }
 
 void delChild(struct child** child_list, int pid) {

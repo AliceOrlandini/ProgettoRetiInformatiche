@@ -7,7 +7,9 @@
 #include "./../include/device_requests.h"
 #include "./../include/server_consts.h"
 #include "./../../network/include/network.h"
-
+/*user1 pass 5001 19:14:59 19:18:03         
+user2 pass 5002 19:14:53 19:18:00    
+user3 pass 5003 19:15:14 19:18:06*/
 /*
     Permette ad un utente di effettuare il login.
     Si imposta il campo timestamp_logout a NULL 
@@ -71,7 +73,7 @@ void in(int* sd, char* dev_username, char* dev_password) {
             ret = send_TCP(sd, "ok");
             if(ret < 0) { printf("Error2 in\n"); return; }
 
-            printf("%s ha effettuato il login!\n", dev_username);
+            printf("\n%s ha effettuato il login!\n", dev_username);
             return;
         }
     }
@@ -118,7 +120,7 @@ void signup(int* sd, char* dev_username, char* dev_password, char* dev_port) {
     // chiudo il file
     fclose(fp);
 
-    printf("%s si è registrato!\n", dev_username);
+    printf("\n%s si è registrato!\n", dev_username);
 }
 
 /*
@@ -191,7 +193,7 @@ void hanging(int* sd, struct pendingMessage** pending_message_list) {
     free(message);
     
     // invio al client tutte le righe
-    for(int i = 0; i < num_users; i++) {
+    for(i = 0; i < num_users; i++) {
         
         // creo il messaggio da inviare al client
         len = strlen(username[i]) + strlen(timestamp[i]) + 5;
@@ -530,7 +532,7 @@ void out(char* dev_username) {
             // chiudo il file
             fclose(fp);
 
-            printf("%s ha effettuato il logout!\n", dev_username);
+            printf("\n%s ha effettuato il logout!\n", dev_username);
             return;
         }
     }
@@ -824,8 +826,6 @@ int serveDeviceRequest(int* sd, char* request, char** username, struct pendingMe
     char* dev_port;
     int len;
     int ret;
-
-    printf("\nRichiesta ricevuta da un client %s\n", request);
     
     // prendo il comando inserito 
     command = strtok(request, " ");
