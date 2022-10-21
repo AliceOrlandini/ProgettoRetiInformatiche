@@ -34,9 +34,9 @@ int signup(char* command, struct User* user, int* server_sd, struct sockaddr_in*
     char* message; 
     
     // unisco le tre stringhe per inviare un solo messaggio
-    len = strlen(command) + strlen(user->my_username) + strlen(user->my_password) + strlen(user->srv_port) + 4;
+    len = strlen(command) + strlen(user->my_username) + strlen(user->my_password) + strlen(user->my_port) + 4;
     message = malloc(len);
-    snprintf(message, len, "%s %s %s %s", command, user->my_username, user->my_password, user->srv_port);
+    snprintf(message, len, "%s %s %s %s", command, user->my_username, user->my_password, user->my_port);
 
     // stabilisco la connessione con il server
     ret = connect_to(server_sd, server_addr, SERVER_PORT);

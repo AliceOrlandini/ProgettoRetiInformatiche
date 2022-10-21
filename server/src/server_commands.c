@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#include <unistd.h> 
+#include <stdbool.h>
 #include <signal.h>
 
 #include "./../include/server_commands.h"
@@ -43,6 +44,7 @@ void list() {
     char* port;
     char* timestamp_login;
     char* timestamp_logout;
+    bool trovato = false;
 
     // apro il file db_users.txt in lettura
     fp = fopen("./server/files/db_users.txt", "r"); 
@@ -61,10 +63,13 @@ void list() {
         // controllo se il timestamp_logout è NULL
         if(!strncmp(timestamp_logout, "NULL", 4)) {
             printf("\n%s * %s * %s", username, timestamp_login, port);
+            trovato = true;
         }
     }
-    printf("\n");
 
+    if(!trovato) { printf("Non c'è nessun utente online.\n"); } 
+    else { printf("\n"); }
+    
     // chiudo il file
     fclose(fp);
     return;

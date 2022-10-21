@@ -67,7 +67,7 @@ void delPMList(struct pendingMessage** pending_message_list) {
         free(*pending_message_list);
         *pending_message_list = del_user;
     }
-    printf("Lista dei messaggi pendenti eliminata con successo!\n");
+    *pending_message_list = NULL;
     return; 
 }
 

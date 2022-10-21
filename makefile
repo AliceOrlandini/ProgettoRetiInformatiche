@@ -41,4 +41,5 @@ child.o: child.c
 
 # pulizia dei file della compilazione (eseguito con make clean)
 clean:
-	rm *o dev serv
+	rm *o dev serv 
+	rm ./server/src/*.o ./client/src/*.o ./network/src/*.o
