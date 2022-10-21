@@ -40,7 +40,7 @@ int signup(char* command, struct User* user, int* server_sd, struct sockaddr_in*
 
     // stabilisco la connessione con il server
     ret = connect_to(server_sd, server_addr, SERVER_PORT);
-    if(ret < 0) { printf("Impossibile connettersi al server.\n"); return -1; }
+    if(ret < 0) { printf("Impossibile connettersi al server.\n"); free(message); return -1; }
     
     // invio al server il messaggio
     ret = send_TCP(server_sd, message);
@@ -54,8 +54,11 @@ int signup(char* command, struct User* user, int* server_sd, struct sockaddr_in*
         free(message);
         return -1; 
     }
+
     if(strncmp(message, "ok", 2)) {
-        printf("Impossibile eseguire la registrazione.\n"); free(message); return -1;
+        printf("Impossibile eseguire la registrazione.\n"); 
+        free(message); 
+        return -1;
     }
 
     // libero la memoria utilizzata per il messaggio
@@ -455,8 +458,8 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
             
             // salvo in memoria la porta del server
             user->srv_port = malloc(5);
-            strncpy(user->srv_port, "4242", len);
-            user->srv_port[len] = '\0';
+            strncpy(user->srv_port, "4242", 4);
+            user->srv_port[4] = '\0';
             
             // salvo in memoria l'username dell'utente
             len = strlen(temp_username);
