@@ -102,7 +102,13 @@ void signup(int* sd, char* dev_username, char* dev_password, char* dev_port) {
 
     // apro il file db_users.txt in append
     fp = fopen("./server/files/db_users.txt", "a");
-    if(fp == NULL) { printf("Error0 signup\n"); return; }
+    if(fp == NULL) { 
+        printf("Error0 signup\n"); 
+        // comunico al client c'è stato un errore
+        ret = send_TCP(sd, "no");
+        if(ret < 0) { printf("Error1 signup\n"); return; }
+        return; 
+    }
 
     // calcolo il timestamp del login
     t = time(NULL);
@@ -111,11 +117,17 @@ void signup(int* sd, char* dev_username, char* dev_password, char* dev_port) {
     // inserisco il nuovo record che sarà: 
     // username password port timestamp_login timestamp_logout
     ret = fprintf(fp, "%s %s %s %s NULL    \n", dev_username, dev_password, dev_port, timestamp_login);
-    if(ret < 0) { printf("Error1 signup\n"); return; }
+    if(ret < 0) { 
+        printf("Error2 signup\n"); 
+        // comunico al client c'è stato un errore
+        ret = send_TCP(sd, "no");
+        if(ret < 0) { printf("Error3 signup\n"); return; }
+        return; 
+    }
 
     // comunico al client che la registrazione è avvenuta con successo
     ret = send_TCP(sd, "ok");
-    if(ret < 0) { printf("Error2 signup\n"); return; }
+    if(ret < 0) { printf("Error4 signup\n"); return; }
 
     // chiudo il file
     fclose(fp);
