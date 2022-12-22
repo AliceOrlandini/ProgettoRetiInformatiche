@@ -1,6 +1,10 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 
+/**
+ * Struttura dati contenente le informazioni 
+ * degli utenti con cui si sta chattando.
+ */
 struct usersChattingWith {
     char* dst_username;
     struct sockaddr_in addr;

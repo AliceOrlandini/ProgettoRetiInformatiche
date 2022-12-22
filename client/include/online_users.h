@@ -1,8 +1,7 @@
-
-/*
-    Struttura con cui verrà realizzata
-    la lista degli utenti online.
-*/
+/**
+ * Struttura con cui verrà realizzata
+ * la lista degli utenti online.
+ */
 struct onlineUser {
     char* username;
     char* port;

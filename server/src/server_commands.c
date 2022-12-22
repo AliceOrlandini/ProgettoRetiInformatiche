@@ -10,30 +10,29 @@
 #include "./../../network/include/network.h"
 
 
-/* 
-    Stampa i comandi che il server ha a disposizione
-    con una breve descrizione del funzionamento.
-*/
+/**
+ * Stampa i comandi che il server ha a disposizione
+ * con una breve descrizione del funzionamento.
+ */
 void printCommands() {
     printf("\nI comandi disponibili sono:\n1) help --> mostra i dettagli dei comandi.\n2) list --> mostra un elenco degli utenti connessi.\n3) esc  --> chiude il server.\n");
     return;
 }
 
-/* 
-    Stampa più info dei comandi che 
-    il server ha a disposizione.
-*/
+/**
+ * Stampa più info dei comandi che il server ha a disposizione. 
+ */
 void help() {
     printf("\nEcco le info dei comandi:\n-list: mostra l'elenco degli utenti connessi nel formato \"username * timestamp * porta\".\n-esc: termina il server.\n\n");
     return;
 }
 
-/* 
-    Mostra l'elenco degli utenti connessi. Per fare ciò, scorre
-    il file db_users.txt e controlla se il campo timestamp_logout
-    è impostato a NULL. In caso affermativo, stampa a schermo
-    l'username, il timestamp_login e la porta. 
-*/
+/**
+ * Mostra l'elenco degli utenti connessi. Per fare ciò, scorre
+ * il file db_users.txt e controlla se il campo timestamp_logout
+ * è impostato a NULL. In caso affermativo, stampa a schermo
+ * l'username, il timestamp_login e la porta. 
+ */
 void list() {
     
     int ret;
@@ -75,11 +74,14 @@ void list() {
     return;
 }
 
-/* 
-    Esegue la disconnessione del socket dedicato
-    ad ascoltare le richieste provenienti dai device.
-    Inoltre, se ci sono processi figli attivi li elimina.
-*/
+/**
+ * Esegue la disconnessione del socket dedicato
+ * ad ascoltare le richieste provenienti dai device.
+ * Inoltre, se ci sono processi figli attivi li elimina.
+ * 
+ * @param server_sd puntatore al socket descriptor del server.
+ * @param child_list puntatore alla lista dei figli.
+ */
 void esc(int* server_sd, struct child** child_list) {
     
     int ret; 
@@ -100,10 +102,14 @@ void esc(int* server_sd, struct child** child_list) {
     exit(0);
 }
 
-/* 
-    Verifica che il comando sia valido ed 
-    esegue della funzione corrispondente.
-*/
+/**
+ * Verifica che il comando sia valido ed 
+ * esegue della funzione corrispondente.
+ * 
+ * @param buffer puntatore al buffer che contiene il comando digitato.
+ * @param sd puntatore al socket descriptor del server.
+ * @param child_list puntatore alla lista dei processi figli.
+ */
 void executeServerCommand(char* buffer, int* sd, struct child** child_list) {
 
     char server_command[SERVER_COMMAND_SIZE];

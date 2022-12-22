@@ -1,5 +1,5 @@
-/* 
-    Struttura per i dati dei processi figli.
+/**
+* Struttura per i dati dei processi figli.
 */
 struct child {
     int pid;

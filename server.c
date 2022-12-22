@@ -13,10 +13,12 @@
 #include "./server/include/device_requests.h"
 #include "./network/include/network.h"
 
-/* 
-    Gestione dei descrittori pronti 
-    tramite l'io multiplexing.
-*/
+/**
+ * Gestione dei descrittori pronti 
+ * tramite l'io multiplexing.
+ *
+ * @param listener l'intero che rappresenta il socket descriptor di ascolto.
+ */
 void ioMultiplexing(int listener) {
     
     int new_sd;

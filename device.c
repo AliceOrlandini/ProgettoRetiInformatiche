@@ -14,9 +14,13 @@
 #include "./client/include/online_users.h"
 #include "./client/include/users_chatting_with.h"
 
-/*
-    Funzione per pulire il set dei monitorati.
-*/
+/**
+ * Funzione per pulire il set dei socket monitorati.
+ *
+ * @param server_sd puntatore al socket descriptor del server.
+ * @param listener puntatore al socket di ascolto.
+ * @param master puntatore al set da pulire.
+ */
 void clearMaster(int* server_sd, int* listener, fd_set* master) {
     
     // tolgo dal set dei monitorati il socket per la comunicazione
@@ -26,10 +30,13 @@ void clearMaster(int* server_sd, int* listener, fd_set* master) {
     return;
 }
 
-/*
-    Funzione chiamata quando l'utente inizia una chat offline,
-    ovvero il caso in cui i messaggi vengono salvati sul server.
-*/
+/**
+ * Funzione chiamata quando l'utente inizia una chat offline,
+ * ovvero il caso in cui i messaggi vengono salvati sul server.
+ *
+ * @param user puntatore alla struttura dati usata per contenere le informazioni dell'utente.
+ * @param buffer puntatore al buffer adibito alla stampa dei messaggi a video.
+ */
 void chattingOffline(struct User* user, char* buffer) {
     
     // cambio lo stato dell'utente
@@ -44,15 +51,23 @@ void chattingOffline(struct User* user, char* buffer) {
     return;
 }
 
-/*
-    Funzione chiamata quando l'utente inizia una chat online.
-    Si crea una nuova connessione con il device e lo si aggiunge
-    alla lista degli utenti con cui si sta chattando.
-*/
-void chattingOnline(int ret, struct User* user, fd_set* master, int* p2p_sd, struct sockaddr_in* dst_addr, int* fdmax, char* buffer) {
+/**
+ * Funzione chiamata quando l'utente inizia una chat online.
+ * Si crea una nuova connessione con il device e lo si aggiunge
+ * alla lista degli utenti con cui si sta chattando.
+ *
+ * @param dst_port la porta del destinatario. 
+ * @param user puntatore alla struttura dati usata per contenere le informazioni dell'utente.
+ * @param master puntatore al set dei monitorati.
+ * @param p2p_sd puntatore al socket descriptor creato per la comunicazione p2p.
+ * @param dst_addr puntatore alla struttura che rappresenta l'indirizzo del destinatario.
+ * @param fdmax puntatore all'intero che contiene il numero di socket monitorati.
+ * @param buffer puntatore al buffer adibito alla stampa dei messaggi a video.
+ */
+void chattingOnline(int dst_port, struct User* user, fd_set* master, int* p2p_sd, struct sockaddr_in* dst_addr, int* fdmax, char* buffer) {
     
     // creo una nuova connessione con il destinatario e lo aggiungo alla lista
-    addNewConnToChattingWithList(&user->users_chatting_with, user->dst_username, ret, p2p_sd);
+    addNewConnToChattingWithList(&user->users_chatting_with, user->dst_username, dst_port, p2p_sd);
     FD_SET(*p2p_sd, master);
     if(*p2p_sd > *fdmax) { *fdmax = *p2p_sd; } 
 
@@ -68,9 +83,15 @@ void chattingOnline(int ret, struct User* user, fd_set* master, int* p2p_sd, str
     return; 
 }
 
-/*
-    Permette di ricevere dal server la lista degli utenti online.
-*/
+/**
+ * Permette di ricevere dal server la lista degli utenti online.
+ * 
+ * @param server_sd puntatore al socket descriptor del server.
+ * @param user puntatore alla struttura dati usata per contenere le informazioni dell'utente.
+ * @param online_user_list puntatore alla lista che verrà usata per salvare gli utenti online.
+ * @param buffer puntatore al buffer adibito alla stampa dei messaggi a video.
+ * @return un numero negativo in caso di errore, zero altrimenti.
+ */
 int getOnlineUsers(int* server_sd, struct User* user, struct onlineUser** online_user_list, char* buffer) {
     
     int ret;
@@ -124,8 +145,7 @@ int getOnlineUsers(int* server_sd, struct User* user, struct onlineUser** online
         if(!strncmp(username, user->my_username, len)) { continue; }
         if(!checkContacts(user->my_username, username)) { continue; } 
         
-        // se ho superato i controlli salvo in lista i dati dell'utente in modo 
-        // da non dover ricontattare il server per aggiungerlo alla chat di gruppo
+        // se ho superato i controlli salvo in lista i dati dell'utente
         addElemToOnlineUserList(online_user_list, username, port);
         
         // stampo a video l'username dell'utente
@@ -137,18 +157,24 @@ int getOnlineUsers(int* server_sd, struct User* user, struct onlineUser** online
     return 0; 
 }
 
-/*
-    Permette di inserire un utente nel gruppo. In particolare,
-    si preleva dalla lista la porta del device e poi si instaura 
-    una comunicazione p2p. Infine il device viene inserito nella 
-    lista di quelli con cui si sta chattando.
-*/
+/**
+ * Permette di aggiungere un utente al gruppo. In particolare,
+ * si preleva dalla lista la porta del device e poi si instaura 
+ * una comunicazione p2p. Infine il device viene inserito nella 
+ * lista di quelli con cui si sta chattando.
+ *
+ * @param user puntatore alla struttura dati usata per contenere le informazioni dell'utente.
+ * @param online_user_list puntatore alla lista in cui sono salvati gli utenti online.
+ * @param username puntatore all'username dell'utente da aggiungere al gruppo.
+ * @param master puntatore al set dei monitorati.
+ * @param fdmax puntatore all'intero che contiene il numero di socket monitorati.
+ */
 void newGroupMember(struct User* user, struct onlineUser** online_user_list, char* username, fd_set* master, int* fdmax) {
     
     int sd;
     char* port = NULL;
     
-    // recupero la porta di username 
+    // recupero la porta dell'utente da aggiungere al gruppo 
     port = getPortFromOnlineUserList(online_user_list, username);
     if(port == NULL) {
         printf("Questo utente non può essere inserito nel gruppo.\n> ");
@@ -174,11 +200,18 @@ void newGroupMember(struct User* user, struct onlineUser** online_user_list, cha
     return; 
 }
 
-/*
-    Permette di chiudere la comunicazione con i device nel caso 
-    di chat online, oppure invia al server l'informazione che 
-    si è finito di inviare messaggi.
-*/
+/**
+ * Permette di chiudere la comunicazione con i device nel caso 
+ * di chat online, oppure invia al server l'informazione che 
+ * si è finito di inviare messaggi.
+ *
+ * @param user puntatore alla struttura dati usata per contenere le informazioni dell'utente.
+ * @param online_user_list puntatore alla lista in cui sono salvati gli utenti online.
+ * @param p2p_sd puntatore al socket descriptor creato per la comunicazione p2p.
+ * @param master puntatore al set dei monitorati.
+ * @param server_sd puntatore al socket descriptor del server.
+ * @return un numero negativo in caso di errore, zero altrimenti.
+ */
 int quitChat(struct User* user, struct onlineUser** online_user_list, int* p2p_sd, fd_set* master, int* server_sd) {
     
     int ret; 
@@ -211,26 +244,35 @@ int quitChat(struct User* user, struct onlineUser** online_user_list, int* p2p_s
     return 1;
 }
 
-/*
-    Funzione invocata quando un device con cui si sta chattando
-    si disconnette. Si elimina la sua connessione dalla lista
-    degli utenti con cui si sta chattando.
-*/
+/**
+ * Funzione invocata quando un device con cui si sta chattando
+ * si disconnette. Si elimina la sua connessione dalla lista
+ * degli utenti con cui si sta chattando.
+ *
+ * @param user puntatore alla struttura dati usata per contenere le informazioni dell'utente.
+ * @param p2p_sd puntatore al socket descriptor creato per la comunicazione p2p.
+ * @param master puntatore al set dei monitorati.
+ */
 void deviceDisconnection(struct User* user, int* p2p_sd, fd_set* master) {
     
     // elimino la connessione con questo device
     delConnFromChattingWithList(&user->users_chatting_with, p2p_sd, master);
     printf("Il device ha chiuso la comunicazione.\n"); 
 
-    // elimino questo elemento dalla lista di quelli con cui si sta chattando
+    // elimino questo utente dalla lista di quelli con cui si sta chattando
     delUserFromChattingWithList(&user->users_chatting_with, *p2p_sd);
     return;
 }
 
-/*
-    Permette di inviare un messaggio o ai device nel caso di chat online
-    o al server nel caso di chat offline.
-*/
+/**
+ * Permette di inviare un messaggio ai device nel caso di chat online
+ * o al server nel caso di chat offline.
+ *
+ * @param user puntatore alla struttura dati usata per contenere le informazioni dell'utente.
+ * @param buffer puntatore al buffer adibito alla stampa dei messaggi a video.
+ * @param server_sd puntatore al socket descriptor del server.
+ * @return un numero negativo in caso di errore, zero altrimenti.
+ */
 int sendMessage(struct User* user, char* buffer, int* server_sd) {
 
     int ret;
@@ -274,11 +316,15 @@ int sendMessage(struct User* user, char* buffer, int* server_sd) {
     return 0;
 }
 
-/*
-    Questa funzione viene invocata quando si riceve un messaggio
-    e permette di inviare il messaggio a tutti gli altri membri
-    del gruppo. 
-*/
+/**
+ * Questa funzione viene invocata quando si riceve un messaggio
+ * e permette di inviare il messaggio a tutti gli altri membri
+ * del gruppo. 
+ *
+ * @param users_chatting_with puntatore alla lista di utenti con cui si sta chattando.
+ * @param p2p_sd intero che rappresenta il socket descriptor relativo all'utente che ha inviato il messaggio.
+ * @param buffer puntatore al buffer adibito all'invio dei messaggi.
+ */
 void sendMessageToOthers(struct usersChattingWith** users_chatting_with, int p2p_sd, char* buffer) {
 
     int ret;
@@ -307,9 +353,12 @@ void sendMessageToOthers(struct usersChattingWith** users_chatting_with, int p2p
     return;
 }
 
-/*
-    Permette di inviare un file ai device. 
-*/
+/**
+ * Permette di inviare un file ai device. 
+ *
+ * @param users_chatting_with puntatore alla lista di utenti con cui si sta chattando.
+ * @param file_name puntatore al buffer che contiene il nome del file da inviare.
+ */
 void shareFile(struct usersChattingWith** users_chatting_with, char* file_name) {
 
     FILE* fp;
@@ -344,7 +393,7 @@ void shareFile(struct usersChattingWith** users_chatting_with, char* file_name) 
         ret = send_file(&elem->p2p_sd, fp);
         if(ret < 0) { printf("Impossibile inviare il file a questo utente.\n"); elem = elem->next; continue; }
 
-        // passo al prossimo elemento e riavvolgo il file
+        // passo al prossimo utente e riavvolgo il file
         elem = elem->next;
         rewind(fp);
     }
@@ -361,9 +410,14 @@ void shareFile(struct usersChattingWith** users_chatting_with, char* file_name) 
     return;
 }
 
-/*
-    Permette di ricevere un file da un device.
-*/
+/**
+ * Permette di ricevere un file da un device.
+ *
+ * @param p2p_sd puntatore all'intero che rappresenta il socket descriptor relativo all'utente che ha inviato il file.
+ * @param file_name puntatore al buffer che contiene il nome del file da inviare.
+ * @param user puntatore alla struttura dati usata per contenere le informazioni dell'utente.
+ * @param master puntatore al set dei monitorati.
+ */
 void receiveFile(int* p2p_sd, char* file_name, struct User* user, fd_set* master) {
 
     FILE* fp;
@@ -404,9 +458,13 @@ void receiveFile(int* p2p_sd, char* file_name, struct User* user, fd_set* master
     return;
 }
 
-/*
-    Permette di inviare un file agli altri membri del gruppo.
-*/
+/**
+ * Permette di inviare un file agli altri membri del gruppo.
+ *
+ * @param users_chatting_with puntatore alla lista di utenti con cui si sta chattando.
+ * @param p2p_sd puntatore all'intero che rappresenta il socket descriptor relativo all'utente che ha inviato il file.
+ * @param file_name puntatore al buffer che contiene il nome del file da inviare.
+ */
 void sendFileToOthers(struct usersChattingWith** users_chatting_with, int p2p_sd, char* file_name) {
     
     int ret;
@@ -467,10 +525,21 @@ void sendFileToOthers(struct usersChattingWith** users_chatting_with, int p2p_sd
     return;
 }
 
-/*
-    Funzione invocata quando arriva un nuovo input da tastiera. 
-    A seconda dello stato dell'utente si eseguono le funzioni.
-*/
+/**
+ * Funzione invocata quando arriva un nuovo input da tastiera. 
+ * A seconda dello stato dell'utente si eseguono le funzioni.
+ *
+ * @param user puntatore alla struttura dati usata per contenere le informazioni dell'utente.
+ * @param online_user_list puntatore alla lista in cui sono salvati gli utenti online.
+ * @param server_sd puntatore al socket descriptor del server.
+ * @param listener puntatore al socket di ascolto.
+ * @param master puntatore al set dei monitorati.
+ * @param p2p_sd intero che rappresenta il socket descriptor relativo all'utente che ha inviato il messaggio.
+ * @param dst_addr puntatore alla struttura che rappresenta l'indirizzo del destinatario.
+ * @param fdmax puntatore all'intero che contiene il numero di socket monitorati.
+ * @param buffer puntatore al buffer adibito alle stampe e all'invio dei messaggi.
+ * @return un numero negativo in caso di errore, zero altrimenti.
+ */
 int newInput(struct User* user, struct onlineUser** online_user_list, int* server_sd, int* listener, fd_set* master, int* p2p_sd, struct sockaddr_in* dst_addr, int* fdmax, char* buffer) {
 
     int ret;
@@ -577,11 +646,17 @@ int newInput(struct User* user, struct onlineUser** online_user_list, int* serve
     return 0; 
 }
 
-/* 
-    Gestione dei descrittori pronti 
-    tramite l'io multiplexing 
-*/
-void ioMultiplexing(struct User* user, struct onlineUser** online_user_list, int listener, int* server_sd, char* buffer) {
+/**
+ * Gestione dei descrittori pronti 
+ * tramite l'io multiplexing.
+ *
+ * @param user puntatore alla struttura dati usata per contenere le informazioni dell'utente.
+ * @param online_user_list puntatore alla lista in cui sono salvati gli utenti online.
+ * @param listener puntatore al socket di ascolto.
+ * @param server_sd puntatore al socket descriptor del server.
+ * @param buffer puntatore al buffer adibito alle stampe e all'invio dei messaggi.
+ */
+void ioMultiplexing(struct User* user, struct onlineUser** online_user_list, int* listener, int* server_sd, char* buffer) {
     
     int p2p_sd;
     struct sockaddr_in src_addr;
@@ -601,7 +676,7 @@ void ioMultiplexing(struct User* user, struct onlineUser** online_user_list, int
     // aggiungo lo standard input, il listener del device e il
     // socket per la comunicazione col server al set dei monitorati
     FD_SET(STANDARD_INPUT, &master);
-    FD_SET(listener, &master);
+    FD_SET(*listener, &master);
     FD_SET(*server_sd, &master);
     
     // tengo traccia del maggiore
@@ -619,11 +694,11 @@ void ioMultiplexing(struct User* user, struct onlineUser** online_user_list, int
             if(FD_ISSET(i, &read_fds)) {
 
                 // se è il listener
-                if(i == listener) {
+                if(i == *listener) {
                     
                     // accetto la nuova richiesta di connessione da
                     // un device per stabilire una comunicazione p2p
-                    p2p_sd = accept(listener, (struct sockaddr*)&src_addr, (socklen_t*)&addrlen);
+                    p2p_sd = accept(*listener, (struct sockaddr*)&src_addr, (socklen_t*)&addrlen);
                     if(p2p_sd < 0) { perror("Error0 accept"); }
                     else {
                         printf("Stabilita una connessione con un device!\n");
@@ -648,7 +723,7 @@ void ioMultiplexing(struct User* user, struct onlineUser** online_user_list, int
                     buffer[len - 1] = '\0';
 
                     // eseguo la funzione che gestirà l'input
-                    ret = newInput(user, online_user_list, server_sd, &listener, &master, &p2p_sd, &dst_addr, &fdmax, buffer);
+                    ret = newInput(user, online_user_list, server_sd, listener, &master, &p2p_sd, &dst_addr, &fdmax, buffer);
                     if(ret == -1) { return; }
                     else if(ret == 1) { continue; }
                     else if(ret == 2) { break; }
@@ -799,7 +874,7 @@ int main(int argc, char *argv[]) {
     memset(&buffer, '\0', BUFFER_SIZE);
 
     // faccio partire l'io multiplexing
-    ioMultiplexing(&user, &online_user_list, listener, &server_sd, (char*)&buffer);
+    ioMultiplexing(&user, &online_user_list, &listener, &server_sd, (char*)&buffer);
 
     // libero la memoria allocata per i dati dell'utente
     free(user.my_username);

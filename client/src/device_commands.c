@@ -7,10 +7,12 @@
 #include "./../include/device_consts.h"
 #include "./../../network/include/network.h"
 
-/*
-    Stampa a video i comandi disponibili a 
-    seconda dello stato dell'utente.
-*/
+/**
+ * Stampa a video i comandi disponibili a 
+ * seconda dello stato dell'utente.
+ * 
+ * @param user struttura dati contenente le informazioni dell'utente.
+ */
 void printCommands(struct User user) {
     
     printf("\nI comandi disponibili sono:\n");
@@ -21,12 +23,18 @@ void printCommands(struct User user) {
     }
 }
 
-/* 
-    Permette a un utente di creare un account sul server caratterizzato 
-    da username e password. Viene stabilita una connessione con il server 
-    e successivamente viene inviato il comando. Se si riceve un "ok" come 
-    risposta allora la registrazione è avvenuta con successo.
-*/
+/**
+ * Permette a un utente di creare un account sul server caratterizzato 
+ * da username e password. Viene stabilita una connessione con il server 
+ * e successivamente viene inviato il comando. Se si riceve un "ok" come 
+ * risposta allora la registrazione è avvenuta con successo.
+ * 
+ * @param command puntatore al buffer contenente il comando.
+ * @param user puntatore alla struttura dati contenente le informazioni dell'utente.
+ * @param server_sd puntatore al socket descriptor del server.
+ * @param server_addr puntatore alla struttura contenente l'indirizzo del server.
+ * @return un numero negativo in caso di errore, zero altrimenti.
+ */
 int signup(char* command, struct User* user, int* server_sd, struct sockaddr_in* server_addr) {
 
     int len;
@@ -68,12 +76,18 @@ int signup(char* command, struct User* user, int* server_sd, struct sockaddr_in*
     return 0;
 }
 
-/*
-    Permette al device di richiedere al server la connessione al servizio.
-    Viene stabilita una connessione con il server e successivamente vengono 
-    inviati i dati per l'autenticazione. Se si riceve un "ok" come 
-    risposta allora la registrazione è avvenuta con successo.
-*/
+/**
+ * Permette al device di richiedere al server la connessione al servizio.
+ * Viene stabilita una connessione con il server e successivamente vengono 
+ * inviati i dati per l'autenticazione. Se si riceve un "ok" come 
+ * risposta allora la registrazione è avvenuta con successo.
+ * 
+ * @param command puntatore al buffer contenente il comando.
+ * @param user puntatore alla struttura dati contenente le informazioni dell'utente.
+ * @param server_sd puntatore al socket descriptor del server.
+ * @param server_addr puntatore alla struttura contenente l'indirizzo del server.
+ * @return un numero negativo in caso di errore, zero altrimenti.
+ */
 int in(char* command, struct User* user, int* server_sd, struct sockaddr_in* server_addr) {
     
     int len;
@@ -119,12 +133,15 @@ int in(char* command, struct User* user, int* server_sd, struct sockaddr_in* ser
     return -1;
 }
 
-/*
-    Permette all'utente di ricevere la lista degli utenti 
-    che gli hanno inviato messaggi mentre era offline.
-    Per ogni utente il comando mostra username, il numero di
-    messaggi pendenti in ingresso e il timestamp del più recente.
-*/
+/**
+ * Permette all'utente di ricevere la lista degli utenti 
+ * che gli hanno inviato messaggi mentre era offline.
+ * Per ogni utente il comando mostra username, il numero di
+ * messaggi pendenti in ingresso e il timestamp del più recente.
+ * 
+ * @param command puntatore al buffer contenente il comando.
+ * @param server_sd puntatore al socket descriptor del server.
+ */
 void hanging(char* command, int* server_sd) {
     
     int ret;
@@ -172,10 +189,14 @@ void hanging(char* command, int* server_sd) {
     return;
 }
 
-/*
-    Consente all'utente di ricevere i messaggi 
-    pendenti dall'utente specificato come parametro.
-*/
+/**
+ * Consente all'utente di ricevere i messaggi 
+ * pendenti dall'utente specificato come parametro.
+ * 
+ * @param command puntatore al buffer contenente il comando.
+ * @param server_sd puntatore al socket descriptor del server.
+ * @param username puntatore al buffer contenente l'username.
+ */
 void show(char* command, int* server_sd, char* username) {
     
     int len;
@@ -234,11 +255,15 @@ void show(char* command, int* server_sd, char* username) {
     return;
 }
 
-/*
-    Verifica se dst_username è presente all'interno della
-    rubrica di my_username. Per fare ciò, scorre il file
-    dei contatti presente nella cartella contacts.
-*/
+/**
+ * Verifica se dst_username è presente all'interno della
+ * rubrica di my_username. Per fare ciò, scorre il file
+ * dei contatti presente nella cartella contacts.
+ * 
+ * @param my_username puntatore al buffer contenente l'username.
+ * @param dst_username puntatore al buffer contenente l'username dell'utente che voglio controllare.
+ * @return vero se l'utente è nella rubrica, falso altrimenti. 
+ */
 bool checkContacts(char* my_username, char* dst_username) {
 
     int len;
@@ -276,12 +301,18 @@ bool checkContacts(char* my_username, char* dst_username) {
     return false;
 }
 
-/*
-    Avvia una chat con l'utente dst_username. Prima controlla se l'utente
-    è presente in rubrica, poi invia la richiesta al server.
-    Se l'utente è online il server invierà la porta dell'utente, 
-    altrimenti i messaggi verranno salvati sul server. 
-*/
+/**
+ * Avvia una chat con l'utente dst_username. Prima controlla se l'utente
+ * è presente in rubrica, poi invia la richiesta al server.
+ * Se l'utente è online il server invierà la porta dell'utente, 
+ * altrimenti i messaggi verranno salvati sul server. 
+ * 
+ * @param command puntatore al buffer contenente il comando.
+ * @param server_sd puntatore al socket descriptor del server.
+ * @param my_username puntatore al buffer contenente l'username.
+ * @param dst_username puntatore al buffer contenente l'username dell'utente con cui si vuole chattare.
+ * @return un numero negativo in caso di errore, zero altrimenti. 
+ */
 int chat(char* command, int* server_sd, char* my_username, char* dst_username) {
     
     int len;
@@ -327,10 +358,13 @@ int chat(char* command, int* server_sd, char* my_username, char* dst_username) {
     return atoi(message);
 }
 
-/*
-    Permette al device di disconnettersi dal server.
-    Inoltre libera anche la memoria allocata per l'utente.
-*/
+/**
+ * Permette al device di disconnettersi dal server.
+ * Inoltre libera anche la memoria allocata per l'utente.
+ * 
+ * @param server_sd puntatore al socket descriptor del server.
+ * @param user puntatore alla struttura dati contenente le informazioni dell'utente.
+ */
 void out(int* server_sd, struct User* user) {
     
     int ret;
@@ -347,11 +381,14 @@ void out(int* server_sd, struct User* user) {
 
 }
 
-/*
-    Permette di ricevere le notifiche mentre si era offline.
-    Questa funzione viene eseguita quando il device inizia 
-    la sua esecuzione.
-*/
+/**
+ * Permette di ricevere le notifiche mentre si era offline.
+ * Questa funzione viene eseguita quando il device inizia 
+ * la sua esecuzione.
+ * 
+ * @param server_sd puntatore al socket descriptor del server.
+ * @param buffer puntatore al buffer.
+ */
 void receiveNotifications(int* server_sd, char* buffer) {
     
     int ret;
@@ -392,10 +429,16 @@ void receiveNotifications(int* server_sd, char* buffer) {
     }
 }
 
-/*
-    A seconda del comando digitato dall'utente
-    si esegue la funzione corrispondente.
-*/
+/**
+ * A seconda del comando digitato dall'utente
+ * si esegue la funzione corrispondente.
+ * 
+ * @param buffer puntatore al buffer.
+ * @param user puntatore alla struttura dati contenente le informazioni dell'utente.
+ * @param sd puntatore al socket descriptor del server.
+ * @param server_addr puntatore alla struttura contenente l'indirizzo del server.
+ * @return -1 in caso di errore, -2 se il comando inserito non è valido, -3 se il comando inserito era out, 0 altrimenti.
+ */
 int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockaddr_in* server_addr) {
 
     int ret;

@@ -4,10 +4,14 @@
 
 #include "./../include/online_users.h"
 
-/*
-    Inserisce un nuovo utente alla lista degli utenti
-    online. L'inserimento in lista avviene in testa.
-*/
+/**
+ * Inserisce un nuovo utente alla lista degli utenti
+ * online. L'inserimento in lista avviene in testa.
+ * 
+ * @param online_user_list puntatore alla lista degli utenti online.
+ * @param username puntatore al buffer contenente l'username dell'utente.
+ * @param port puntatore al buffer contenente la porta dell'utente.
+ */
 void addElemToOnlineUserList(struct onlineUser** online_user_list, char* username, char* port) {
     
     struct onlineUser* new_user;
@@ -34,9 +38,11 @@ void addElemToOnlineUserList(struct onlineUser** online_user_list, char* usernam
     return;
 }
 
-/*
-    Elimina tutta la lista degli utenti online.
-*/
+/**
+ * Elimina tutta la lista degli utenti online.
+ * 
+ * @param online_user_list puntatore alla lista degli utenti online.
+ */
 void delOnlineUserList(struct onlineUser** online_user_list) {
     
     struct onlineUser *del_user;
@@ -54,10 +60,12 @@ void delOnlineUserList(struct onlineUser** online_user_list) {
     printf("Lista degli utenti online con successo!\n");
 }
 
-/*
-    Permette di stampare il contenuto della lista degli 
-    utenti online. Utilizzata solo in fase di debug.
-*/
+/**
+ * Permette di stampare il contenuto della lista degli 
+ * utenti online. Utilizzata solo in fase di debug.
+ * 
+ * @param online_user_list puntatore alla lista degli utenti online.
+ */
 void printOnlineUserList(struct onlineUser** online_user_list) {
     
     struct onlineUser* elem = NULL;
@@ -78,10 +86,13 @@ void printOnlineUserList(struct onlineUser** online_user_list) {
     return;
 }
 
-/*
-    Permette di eliminare dalla lista degli utenti online 
-    l'utente il cui username è specificato come parametro.
-*/
+/**
+ * Permette di eliminare dalla lista degli utenti online 
+ * l'utente il cui username è specificato come parametro.
+ * 
+ * @param online_user_list puntatore alla lista degli utenti online.
+ * @param username puntatore al buffer contenente l'username dell'utente.
+ */
 void delUserFromOnlineUserList(struct onlineUser** online_user_list, char* username) {
     
     int len;
@@ -110,10 +121,14 @@ void delUserFromOnlineUserList(struct onlineUser** online_user_list, char* usern
     }
 }
 
-/*
-    Scorre la lista degli utenti online e restituisce
-    la porta dell'utente specificato come parametro.
-*/
+/**
+ * Scorre la lista degli utenti online e restituisce
+ * la porta dell'utente specificato come parametro.
+ * 
+ * @param online_user_list puntatore alla lista degli utenti online.
+ * @param username puntatore al buffer contenente l'username dell'utente.
+ * @return la porta dell'utente.
+ */
 char* getPortFromOnlineUserList(struct onlineUser** online_user_list, char* username) {
 
     int len;

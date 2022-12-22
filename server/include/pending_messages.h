@@ -1,5 +1,5 @@
-/* 
-    Struttura per creare la lista dei messaggi pendenti.
+/**
+* Struttura per creare la lista dei messaggi pendenti.
 */
 struct pendingMessage {
     char* username_src;
