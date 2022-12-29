@@ -4,12 +4,17 @@
 
 #include "./../include/pending_messages.h"
 
-/*
-    Permette di aggiungere un nuovo messaggio alla lista
-    dei messaggi pendenti specificata come parametro della
-    funzione. L'inserimento avviene in coda per ordinare
-    i messaggi dal più vecchio al più nuovo.
-*/
+/**
+ * Permette di aggiungere un nuovo messaggio alla lista
+ * dei messaggi pendenti specificata come parametro della
+ * funzione. L'inserimento avviene in coda per ordinare
+ * i messaggi dal più vecchio al più nuovo.
+ * 
+ * @param pending_message_list puntatore alla lista dei messaggi pendenti.
+ * @param username puntatore al buffer contenente l'username da inserire in lista.
+ * @param timestamp puntatore al buffer contenente il timestamp da inserire in lista.
+ * @param message puntatore al buffer contenente il messaggio da inserire in lista.
+ */
 void addElemToPMList(struct pendingMessage** pending_message_list, char* username, char* timestamp, char* message) {
     
     struct pendingMessage* new_message;
@@ -52,10 +57,11 @@ void addElemToPMList(struct pendingMessage** pending_message_list, char* usernam
     return;
 }
 
-/*
-    Permette di eliminare tutta la 
-    lista dei messaggi pendenti.
-*/
+/**
+ * Permette di eliminare tutta la lista dei messaggi pendenti.
+ * 
+ * @param pending_message_list puntatore alla lista dei messaggi pendenti.
+ */
 void delPMList(struct pendingMessage** pending_message_list) {
     
     struct pendingMessage *del_user;
@@ -77,6 +83,15 @@ void delPMList(struct pendingMessage** pending_message_list) {
     pendenti. Questa funzione viene utilizzata solo in 
     fase di debugging del codice.
 */
+
+/**
+ * Funzione che stampa username, timestamp e messaggio
+ * di ogni elemento presente nella lista dei messaggi 
+ * pendenti. Questa funzione viene utilizzata solo in 
+ * fase di debugging del codice. 
+ * 
+ * @param pending_message_list puntatore alla lista dei messaggi pendenti.
+ */
 void printPMList(struct pendingMessage** pending_message_list) {
     
     struct pendingMessage* elem;
@@ -97,11 +112,14 @@ void printPMList(struct pendingMessage** pending_message_list) {
     return;
 }
 
-/*
-    Funzione per creare la lista dei messaggi pendenti
-    relativa ad un utente specificato per parametro.
-    I messaggi vengono prelevati dal file db_messages.txt.
-*/
+/**
+ * Funzione per creare la lista dei messaggi pendenti
+ * relativa ad un utente specificato per parametro.
+ * I messaggi vengono prelevati dal file db_messages.txt.
+ * 
+ * @param pending_message_list puntatore alla lista dei messaggi pendenti.
+ * @param dev_username puntatore al buffer che contiene l'username dell'utente.
+ */
 void createPMList(struct pendingMessage** pending_message_list, char* dev_username) {
     
     FILE* fp;
@@ -143,6 +161,14 @@ void createPMList(struct pendingMessage** pending_message_list, char* dev_userna
     Permette di eliminare tutti i messaggi che hanno come 
     mittente l'utente specificato come parametro.
 */
+
+/**
+ * Permette di eliminare tutti i messaggi che hanno come 
+ * mittente l'utente specificato come parametro. 
+ * 
+ * @param pending_message_list puntatore alla lista dei messaggi pendenti.
+ * @param username puntatore al buffer che contiene l'username dell'utente.
+ */
 void delMessagesFromPMList(struct pendingMessage** pending_message_list, char* username) {
     
     int len;

@@ -6,9 +6,12 @@
 #include <fcntl.h>
 
 #include "./../include/child.h"
-/*
-    Permette di aggiungere un figlio alla lista dei processi figli.
-    Viene invocata subito dopo la fork nel processo padre.
+/**
+ * Permette di aggiungere un figlio alla lista dei processi figli.
+ * Viene invocata subito dopo la fork nel processo padre.
+ * 
+ * @param child_list la lista dei processi figli.
+ * @param pid intero che rappresenta il process id del figlio.
 */
 void addChild(struct child** child_list, int pid) {
     
@@ -26,10 +29,11 @@ void addChild(struct child** child_list, int pid) {
 
     return;
 }
-
-/*
-    Elimina tutta la lista dei processi figli.
-*/
+/**
+ * Elimina tutta la lista dei processi figli.
+ * 
+ * @param child_list lista dei processi figli da eliminare.
+ */
 void delChildList(struct child** child_list) {
     
     struct child *del_child;
@@ -50,6 +54,12 @@ void delChildList(struct child** child_list) {
     *child_list = NULL;
 }
 
+/**
+ * Funzione che elimina un figlio dalla lista
+ * 
+ * @param child_list la lista dei processi figli.
+ * @param pid il processo id del figlio da eliminare.
+ */
 void delChild(struct child** child_list, int pid) {
     
     struct child* elem = NULL;
@@ -71,10 +81,12 @@ void delChild(struct child** child_list, int pid) {
     }
 }
 
-/*
-    Permette di stampare il contenuto della lista dei 
-    processi figli. Utilizzata solo in fase di debug.
-*/
+/**
+ * Permette di stampare il contenuto della lista dei 
+ * processi figli. Utilizzata solo in fase di debug.
+ * 
+ * @param child_list lista dei processi figli.
+ */
 void printChildList(struct child** child_list) {
     
     struct child* elem = NULL;
@@ -94,11 +106,14 @@ void printChildList(struct child** child_list) {
     return;
 }
 
-/*
-    Permette di killare tutti i processi presenti nella lista.
-    Prima di eseguire la kill verifica se il pid è ancora valido
-    (ovvero se il processo figlio esiste ancora)
-*/
+/**
+ * Permette di killare tutti i processi presenti nella lista.
+ * Prima di eseguire la kill verifica se il pid è ancora valido
+ * (ovvero se il processo figlio esiste ancora)
+ * 
+ * @param child_list lista dei processi figli.
+ * @return un numero negativo in caso di errore, zero altrimenti. 
+ */
 int killChildren(struct child** child_list) {
     
     struct child* elem = NULL;

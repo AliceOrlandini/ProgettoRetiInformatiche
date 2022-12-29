@@ -10,9 +10,14 @@
 
 #include "./../include/network.h"
 
-/*
-    Funzione per inizializzare il listener.
-*/
+/**
+ * Funzione per inizializzare il listener.
+ * 
+ * @param sd puntatore al socket descriptor da inizializzare.
+ * @param addr puntatore alla struttura che rappresenta l'indirizzo.
+ * @param port struttura che rappresenta la porta.
+ * @return un numero negativo in caso di errore, zero altrimenti. 
+ */
 int init_listener(int* sd, struct sockaddr_in* addr, in_port_t port) {
     
     int ret; 
@@ -41,9 +46,14 @@ int init_listener(int* sd, struct sockaddr_in* addr, in_port_t port) {
     return 0;
 }
 
-/*
-    Funzione per la connessione al server.
-*/
+/**
+ * Funzione per la connessione. 
+ * 
+ * @param sd puntatore al socket descriptor a cui ci si vuole connettere.
+ * @param server_addr puntatore alla struttura dati che contiene l'indirizzo a cui ci si vuole connettere.
+ * @param srv_port struttura dati che contiene la porta a cui ci si vuole connettere.
+ * @return un numero negativo in caso di errore, zero altrimenti. 
+ */
 int connect_to(int* sd, struct sockaddr_in* server_addr, in_port_t srv_port) {
     
     int ret; 
@@ -63,9 +73,13 @@ int connect_to(int* sd, struct sockaddr_in* server_addr, in_port_t srv_port) {
     return 0;
 }
 
-/*
-    Funzione per l'invio di messaggi TCP.
-*/
+/**
+ * Funzione per l'invio di messaggi TCP.
+ * 
+ * @param sd puntatore al socket descriptor a cui si vuole inviare il messaggio.
+ * @param message puntatore al buffer contenente il messaggio.
+ * @return un numero negativo in caso di errore, zero altrimenti.  
+ */
 int send_TCP(int* sd, char* message) {
 
     int len; 
@@ -86,9 +100,13 @@ int send_TCP(int* sd, char* message) {
     return 0;
 }
 
-/*
-    Funzione per la ricezione di messaggi TCP.
-*/
+/**
+ * Funzione per la ricezione di messaggi TCP.
+ * 
+ * @param sd puntatore al socket descriptor da cui si riceve il messaggio.
+ * @param message puntatore al buffer contenente il messaggio.
+ * @return -1 in caso di errore, -2 in caso di disconnessione del socket, zero altrimenti. 
+ */
 int receive_TCP(int* sd, char* message) {
     
     int ret; 
@@ -117,9 +135,13 @@ int receive_TCP(int* sd, char* message) {
     return 0;
 }
 
-/*
-    Funzione per di inviare un file. 
-*/
+/**
+ * Funzione per di inviare un file. 
+ * 
+ * @param sd puntatore al socket descriptor a cui si vuole inviare il file.
+ * @param fp puntatore al file.
+ * @return un numero negativo in caso di errore, zero altrimenti. 
+ */
 int send_file(int* sd, FILE* fp) {
     
     char data[16380];
@@ -153,9 +175,13 @@ int send_file(int* sd, FILE* fp) {
     return 0;
 }
 
-/*
-    Funzione per di ricevere un file. 
-*/
+/**
+ * Funzione per di ricevere un file. 
+ * 
+ * @param sd puntatore al socket descriptor da cui si ricevere il file.
+ * @param fp puntatore al file.
+ * @return -1 in caso di errore, -2 in caso di disconnessione del socket, zero altrimenti.  
+ */
 int receive_file(int* sd, FILE* fp) {
 
     char data[16380];
@@ -191,9 +217,12 @@ int receive_file(int* sd, FILE* fp) {
     return 0;
 }
 
-/*
-    Funzione per chiudere il socket.
-*/
+/**
+ * Funzione per chiudere il socket.
+ * 
+ * @param sd puntatore al socket descriptor a cui ci si vuole disconnettere.
+ * @return un numero negativo in caso di errore, zero altrimenti.  
+ */
 int disconnect_to(int* sd) {
     
     int ret; 

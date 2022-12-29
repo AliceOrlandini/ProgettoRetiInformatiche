@@ -7,15 +7,17 @@
 #include "./../include/device_requests.h"
 #include "./../include/server_consts.h"
 #include "./../../network/include/network.h"
-/*user1 pass 5001 19:14:59 19:18:03         
-user2 pass 5002 19:14:53 19:18:00    
-user3 pass 5003 19:15:14 19:18:06*/
-/*
-    Permette ad un utente di effettuare il login.
-    Si imposta il campo timestamp_logout a NULL 
-    all'interno del file db_users.txt ad indicare
-    che l'utente è online.
-*/
+
+/**
+ * Permette ad un utente di effettuare il login.
+ * Si imposta il campo timestamp_logout a NULL 
+ * all'interno del file db_users.txt ad indicare
+ * che l'utente è online. 
+ * 
+ * @param sd puntatore al socket descriptor associato all'utente.
+ * @param dev_username puntatore al buffer contenente il nome dell'utente.
+ * @param dev_password puntatore al buffer contenente la password dell'utente.
+ */
 void in(int* sd, char* dev_username, char* dev_password) {
     
     char file_line[64];
@@ -88,11 +90,16 @@ void in(int* sd, char* dev_username, char* dev_password) {
     return;
 }
 
-/*
-    Permette a un utente di registrarsi con un username e una password.
-    Per fare ciò si aggiunge una riga nel file db_users.txt contenente
-    le informazioni dell'utente.
-*/
+/**
+ * Permette a un utente di registrarsi con un username e una password.
+ * Per fare ciò si aggiunge una riga nel file db_users.txt contenente
+ * le informazioni dell'utente.
+ * 
+ * @param sd puntatore al socket descriptor associato all'utente.
+ * @param dev_username puntatore al buffer contenente il nome dell'utente.
+ * @param dev_password puntatore al buffer contenente la password dell'utente.
+ * @param dev_port puntatore al buffer contenente la porta associata all'utente.
+ */
 void signup(int* sd, char* dev_username, char* dev_password, char* dev_port) {
     
     int ret; 
@@ -135,11 +142,14 @@ void signup(int* sd, char* dev_username, char* dev_password, char* dev_port) {
     printf("\n%s si è registrato!\n", dev_username);
 }
 
-/*
-    Scorre la lista dei messaggi pendenti e per ogni utente conta il 
-    numero di messaggi pendenti inviati e il timestamp del più recente.
-    Infine, invia tutti i risultati al client.
-*/
+/**
+ * Scorre la lista dei messaggi pendenti e per ogni utente conta il
+ * numero di messaggi pendenti inviati e il timestamp del più recente.
+ * Infine, invia tutti i risultati al client.
+ * 
+ * @param sd puntatore al socket descriptor associato all'utente.
+ * @param pending_message_list puntatore alla lista dei messaggi pendenti.
+ */
 void hanging(int* sd, struct pendingMessage** pending_message_list) {
     
     char* username[32];
@@ -222,12 +232,16 @@ void hanging(int* sd, struct pendingMessage** pending_message_list) {
     return;
 }
 
-/*
-    Funzione per verificare se un utente è online o meno.
-    Per fare ciò, scorre il file db_users.txt e controlla
-    se il campo timestamp_logout dell'utente specificato
-    nel parametro è NULL.
-*/
+/**
+ * Funzione per verificare se un utente è online o meno.
+ * Per fare ciò, scorre il file db_users.txt e controlla
+ * se il campo timestamp_logout dell'utente specificato
+ * nel parametro è NULL.
+ * 
+ * @param dst_username puntatore al buffer contenente il nome dell'utente.
+ * @param port puntatore al buffer contenente la porta associata all'utente.
+ * @return vero se l'utente è online, falso altrimenti.
+ */
 bool checkOnline(char* dst_username, char* port) {
     
     int ret;
@@ -274,13 +288,18 @@ bool checkOnline(char* dst_username, char* port) {
     return false;
 }
 
-/*
-    Permette all'utente di ricevere i messaggi pendenti da dst_username.
-    Per fare ciò si scorre la lista dei messaggi pendenti e si inviano 
-    al client. 
-    Informa inoltre il mittente che i suoi messaggi sono stati letti.
-    Infine elimina quei messaggi dalla lista e dal file.
-*/
+/**
+ * Permette all'utente di ricevere i messaggi pendenti da dst_username.
+ * Per fare ciò si scorre la lista dei messaggi pendenti e si inviano 
+ * al client. 
+ * Informa inoltre il mittente che i suoi messaggi sono stati letti.
+ * Infine elimina quei messaggi dalla lista e dal file.
+ * 
+ * @param sd puntatore al socket descriptor associato all'utente.
+ * @param pending_message_list puntatore alla lista dei messaggi pendenti.
+ * @param src_username puntatore al buffer contenente il nome dell'utente di cui si vogliono leggere i messaggi.
+ * @param my_username puntatore al buffer contenente il nome dell'utente.
+ */
 void show(int* sd, struct pendingMessage** pending_message_list, char* src_username, char* my_username) {
     
     int num_messages = 0;
@@ -391,10 +410,13 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* src_usern
     return;
 }
 
-/*
-    Scorre il file delle db_notifications.txt ed invia all'utente 
-    le sue notifiche. Una volte inviate le elimina dal file.
-*/
+/**
+ * Scorre il file delle db_notifications.txt ed invia all'utente 
+ * le sue notifiche. Una volte inviate le elimina dal file.
+ * 
+ * @param sd puntatore al socket descriptor associato all'utente.
+ * @param my_username puntatore al buffer contenente il nome dell'utente.
+ */
 void sendNotifications(int* sd, char* my_username) {
 
     FILE* fp;
@@ -466,36 +488,42 @@ void sendNotifications(int* sd, char* my_username) {
     delNotificationsFromFile(username, num_notifications);
 }
 
-/*
-    Permette ad un utente di iniziare una chat con dst_username.
-    Se questo non dovesse essere online i messaggi verranno salvati.
-*/
-int chat(int* sd, char* dst_username) {
+/**
+ * Permette ad un utente di iniziare una chat con dst_username.
+ * Se questo non dovesse essere online i messaggi verranno salvati.
+ * 
+ * @param sd puntatore al socket descriptor dell'utente.
+ * @param dst_username puntatore al buffer che contiene l'username dell'utente.
+ * @return 0 se il destinatario è online, 2 se i messsaggi verranno salvati sul server.  
+ */
+int chat(int* sd, char* dst_username) { // QUI
     
     int ret; 
     char port[5];
 
     if(checkOnline(dst_username, port)) {
-        // nel caso in cui il destinatario sia online restituisco 
+        // nel caso in cui il destinatario sia online invio 
         // al client la porta del destinatario in modo che questo 
         // possa instaurare una comunicazione p2p
         ret = send_TCP(sd, port);
-        if(ret < 0) { printf("Impossibile iniziare la chat\n"); }
+        if(ret < 0) { printf("Impossibile iniziare la chat\n"); return -1; }
         return 0;
     } else {
         // nel caso in cui il destinatario sia offline 
         // restituisco al client l'avviso che il messaggio
         // è stato salvato
         ret = send_TCP(sd, "offline");
-        if(ret < 0) { printf("Impossibile salvare la chat\n"); }
+        if(ret < 0) { printf("Impossibile salvare la chat\n"); return -1; }
         return 2;
     }
 }
 
-/*
-    Permette ad un utente di disconnettersi.
-    Salva l'ultimo accesso sul file db_users.txt.
-*/
+/**
+ * Permette ad un utente di disconnettersi.
+ * Salva l'ultimo accesso sul file db_users.txt.
+ * 
+ * @param dev_username puntatore al buffer che contiene l'username dell'utente.
+ */
 void out(char* dev_username) {
 
     char file_line[64];
@@ -551,10 +579,12 @@ void out(char* dev_username) {
     return;
 }
 
-/*
-    Funzione per salvare un messaggio sul file db_messages.txt 
-    che contiene tutti i messaggi pendenti.
-*/
+/**
+ * Funzione per salvare un messaggio sul file db_messages.txt 
+ * che contiene tutti i messaggi pendenti.
+ * 
+ * @param message puntatore al buffer che contiene il messaggio da salvare.
+ */
 void saveMessage(char* message) {
 
     FILE* fp;
@@ -581,10 +611,12 @@ void saveMessage(char* message) {
     return; 
 }
 
-/*
-    Stampa il contenuto di un file.
-    Viene utilizzata a scopo di debug.
-*/
+/**
+ * Stampa a video il contenuto di un file.
+ * Viene utilizzata a scopo di debug.
+ * 
+ * @param fptr puntatore al file da stampare.
+ */
 void printFile(FILE *fptr) {
     
     char ch;
@@ -594,9 +626,14 @@ void printFile(FILE *fptr) {
         putchar(ch);
 }
 
-/*
-    Elimina le righe di un file specificate nel vettore lines.
-*/
+/**
+ * Elimina le righe di un file specificate nel vettore lines.
+ * 
+ * @param srcFile puntatore al file da cui bisogna eliminare le righe.
+ * @param tempFile puntatore al file di appoggio.
+ * @param lines puntatore al vettore che contiene le righe da eliminare.
+ * @param num_lines numero di righe da eliminare.
+ */
 void deleteLine(FILE *srcFile, FILE *tempFile, int* lines, int num_lines) {
     
     char buffer[BUFFER_SIZE];
@@ -618,10 +655,14 @@ void deleteLine(FILE *srcFile, FILE *tempFile, int* lines, int num_lines) {
     }
 }
 
-/*
-    Permette di eliminare dal file db_messages.txt
-    i messaggi mandati da src_username a dst_username.    
-*/
+/**
+ * Permette di eliminare dal file db_messages.txt
+ * i messaggi mandati da src_username a dst_username.
+ * 
+ * @param src_username puntatore al buffer contenente l'username dell'utente che ha inviato i messaggi.
+ * @param dst_username puntatore al buffer contenente l'username dell'utente che ha ricevuto i messaggi.
+ * @param num_messages numero di messaggi da eliminare.
+ */
 void delMessagesFromFile(char* src_username, char* dst_username, int num_messages) {
 
     FILE *srcFile;
@@ -685,10 +726,13 @@ void delMessagesFromFile(char* src_username, char* dst_username, int num_message
     return;
 }
 
-/*
-    Permette di eliminare dal file db_notifications.txt 
-    le notifiche ricevute da username.    
-*/
+/**
+ * Permette di eliminare dal file db_notifications.txt 
+ * le notifiche ricevute da username.  
+ * 
+ * @param src_username puntatore al buffer che contiene l'username dell'utente.
+ * @param num_notifications numero di notifiche da eliminare.
+ */
 void delNotificationsFromFile(char* src_username, int num_notifications) {
 
     FILE *srcFile;
@@ -745,11 +789,13 @@ void delNotificationsFromFile(char* src_username, int num_notifications) {
     return;
 }
 
-/*
-    Invia all'utente la lista degli online. Per fare ciò,
-    scorre il file db_users.txt e preleva gli utenti che 
-    hanno il timestamp_logout a NULL.
-*/
+/**
+ * Invia all'utente la lista degli online. Per fare ciò,
+ * scorre il file db_users.txt e preleva gli utenti che 
+ * hanno il timestamp_logout a NULL.
+ * 
+ * @param sd puntatore al socket descriptor associato all'utente.
+ */
 void sendOnlineUsers(int* sd) {
     
     int ret;
@@ -826,10 +872,16 @@ void sendOnlineUsers(int* sd) {
     return;
 }
 
-/*
-    Gestione della richiesta del device, a seconda del
-    comando ricevuto invoca la funzione corrispondente.
-*/
+/**
+ * Gestione della richiesta del device, a seconda del
+ * comando ricevuto invoca la funzione corrispondente.
+ * 
+ * @param sd puntatore al socket descriptor associato all'utente che ha fatto la richiesta.
+ * @param request puntatore al buffer che contiene la richiesta.
+ * @param username puntatore al puntatore del buffer contentente l'username dell'utente.
+ * @param pending_message_list puntatore alla lista dei messaggi pendenti.
+ * @return -1 in caso di errore, 1 in caso di in, 0 in caso di chat online, 2 in caso di chat offline, 0 per gli altri comandi.
+ */
 int serveDeviceRequest(int* sd, char* request, char** username, struct pendingMessage** pending_message_list) {
 
     char* command = NULL;

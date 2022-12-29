@@ -1,5 +1,11 @@
+/**
+ * Enumerato per gli stati dell'utente.
+ */
 enum User_State { DISCONNECTED, LOGGED, CHATTING_ONLINE, CHATTING_OFFLINE };
 
+/**
+ * Struttura dati che contiene le informazioni associate all'utente.
+ */
 struct User {
     enum User_State user_state;
     char* my_username;

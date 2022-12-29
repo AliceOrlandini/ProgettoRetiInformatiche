@@ -6,10 +6,15 @@
 #include "./../../network/include/network.h"
 #include "./../include/users_chatting_with.h"
 
-/*
-    Permette di aggiungere un utente alla lista degli 
-    utenti online. L'inserimento avviene in testa.
-*/
+/**
+ * Permette di aggiungere un utente alla lista degli 
+ * utenti online. L'inserimento avviene in testa.
+ * 
+ * @param users_chatting_with puntatore alla lista degli utenti con cui si sta chattando.
+ * @param username puntatore al buffer contenente l'username dell'utente.
+ * @param port struttura rappresentante la porta dell'utente.
+ * @param p2p_sd socket descriptor dell'utente che si vuole aggiungere.
+ */
 void addElemToChattingWithList(struct usersChattingWith** users_chatting_with, char* username, in_port_t port, int p2p_sd) {
     
     struct usersChattingWith* new_user;
@@ -34,9 +39,11 @@ void addElemToChattingWithList(struct usersChattingWith** users_chatting_with, c
     return;
 }
 
-/*
-    Elimina tutta la lista degli utenti con cui si sta chattando.
-*/
+/**
+ * Elimina tutta la lista degli utenti con cui si sta chattando.
+ * 
+ * @param users_chatting_with puntatore alla lista degli utenti con cui si sta chattando.
+ */
 void delChattingWithList(struct usersChattingWith** users_chatting_with) {
     
     struct usersChattingWith *del_user;
@@ -51,10 +58,12 @@ void delChattingWithList(struct usersChattingWith** users_chatting_with) {
     printf("Lista degli utenti con cui si sta chattando eliminata con successo!\n");
 }
 
-/*
-    Funzione per stampare il contenuto della lista degli 
-    utenti online. Viene usata solo a scopo di debug.
-*/
+/**
+ * Funzione per stampare il contenuto della lista degli 
+ * utenti online. Viene usata solo a scopo di debug.
+ * 
+ * @param users_chatting_with puntatore alla lista degli utenti con cui si sta chattando.
+ */
 void printChattingWithList(struct usersChattingWith** users_chatting_with) {
     
     struct usersChattingWith* elem = NULL;
@@ -75,10 +84,13 @@ void printChattingWithList(struct usersChattingWith** users_chatting_with) {
     return;
 }
 
-/*
-    Permette di eliminare un utente con p2p_sd specificato
-    come parametro dalla lista degli utenti con cui si sta chattando.
-*/
+/**
+ * Permette di eliminare un utente con p2p_sd specificato come
+ * parametro dalla lista degli utenti con cui si sta chattando.
+ * 
+ * @param users_chatting_with puntatore alla lista degli utenti con cui si sta chattando.
+ * @param p2p_sd socket descriptor dell'utente che si vuole eliminare.
+ */
 void delUserFromChattingWithList(struct usersChattingWith** users_chatting_with, int p2p_sd) {
     
     struct usersChattingWith* elem = NULL;
@@ -106,10 +118,14 @@ void delUserFromChattingWithList(struct usersChattingWith** users_chatting_with,
     return;
 }
 
-/*
-    Permette di inviare il messaggio specificato come 
-    parametro a tutti gli utenti presenti in lista. 
-*/
+/**
+ * Permette di inviare il messaggio specificato come 
+ * parametro a tutti gli utenti presenti in lista. 
+ * 
+ * @param users_chatting_with puntatore alla lista degli utenti con cui si sta chattando.
+ * @param message puntatore al buffer adibito all'invio dei messaggi.
+ * @return un numero negativo in caso di errore, zero altrimenti. 
+ */
 int sendMessageToAll(struct usersChattingWith** users_chatting_with, char* message) {
     
     int ret;
@@ -132,11 +148,16 @@ int sendMessageToAll(struct usersChattingWith** users_chatting_with, char* messa
     return 0;
 }
 
-/*
-    Permette di creare una connessione con un utente e di
-    aggiungerlo alla lista degli utenti con cui si sta chattando.
-    L'inserimento in lista avviene in testa.
-*/
+/**
+ * Permette di creare una connessione con un utente e di
+ * aggiungerlo alla lista degli utenti con cui si sta chattando.
+ * L'inserimento in lista avviene in testa.
+ * 
+ * @param users_chatting_with puntatore alla lista degli utenti con cui si sta chattando.
+ * @param username puntatore al buffer contenente l'username dell'utente.
+ * @param port struttura rappresentante la porta dell'utente.
+ * @param sd puntatore al socket descriptor dell'utente con cui si vuole creare una connessione.
+ */
 void addNewConnToChattingWithList(struct usersChattingWith** users_chatting_with, char* username, in_port_t port, int* sd) {
     
     struct usersChattingWith* new_user;
@@ -165,10 +186,13 @@ void addNewConnToChattingWithList(struct usersChattingWith** users_chatting_with
     return;
 }
 
-/*
-    Permette di disconnettersi da tutti gli utenti e 
-    presenti nella lista degli utenti online.
-*/
+/**
+ * Permette di disconnettersi da tutti gli utenti e 
+ * presenti nella lista degli utenti online.
+ * 
+ * @param users_chatting_with puntatore alla lista degli utenti con cui si sta chattando.
+ * @param master puntatore al set dei descrittori monitorati.
+ */
 void delAllConnFromChattingWithList(struct usersChattingWith** users_chatting_with, fd_set* master) {
 
     struct usersChattingWith* elem = NULL;
@@ -189,10 +213,14 @@ void delAllConnFromChattingWithList(struct usersChattingWith** users_chatting_wi
     return;
 }
 
-/*
-    Permette di disconnettersi dall'utente con 
-    p2p_sd specificato come parametro.
-*/
+/**
+ * Permette di disconnettersi dall'utente con 
+ * p2p_sd specificato come parametro.
+ * 
+ * @param users_chatting_with puntatore alla lista degli utenti con cui si sta chattando.
+ * @param sd puntatore al socket descriptor dell'utente di cui si vuole eliminare la connessione.
+ * @param master puntatore al set dei descrittori monitorati.
+ */
 void delConnFromChattingWithList(struct usersChattingWith** users_chatting_with, int* sd, fd_set* master) {
 
     struct usersChattingWith* elem = NULL;
@@ -216,10 +244,14 @@ void delConnFromChattingWithList(struct usersChattingWith** users_chatting_with,
     return;
 }
 
-/*
-    Funzione che restituisce true nel caso in cui l'utente passato come
-    parametro sia già nella chat di gruppo, false altrimenti.
-*/
+/**
+ * Funzione che restituisce true nel caso in cui l'utente passato come
+ * parametro sia già nella chat di gruppo, false altrimenti.
+ * 
+ * @param users_chatting_with puntatore alla lista degli utenti con cui si sta chattando.
+ * @param username puntatore al buffer contenente l'username dell'utente.
+ * @return true se l'utente è già nel gruppo, false altrimenti.
+ */
 bool isInTheGroupYet(struct usersChattingWith** users_chatting_with, char* username) {
 
     struct usersChattingWith* elem = NULL;
