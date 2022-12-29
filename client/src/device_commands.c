@@ -492,17 +492,18 @@ int executeDeviceCommand(char* buffer, struct User* user, int* sd, struct sockad
 
         } else if(!strncmp(command, "signup", 6)) { 
             
+            temp_port = strtok(NULL, " ");
             temp_username = strtok(NULL, " ");
             temp_password = strtok(NULL, " ");
             
             // controllo che l'utente abbia inserito i dati
-            if(temp_username == NULL || temp_password == NULL) { return -1; }
-            
+            if(temp_username == NULL || temp_password == NULL || temp_port == NULL) { return -1; }
             
             // salvo in memoria la porta del server
-            user->srv_port = malloc(5);
-            strncpy(user->srv_port, "4242", 4);
-            user->srv_port[4] = '\0';
+            len = strlen(temp_port);
+            user->srv_port = malloc(len + 1);
+            strncpy(user->srv_port, temp_port, len);
+            user->srv_port[len] = '\0';
             
             // salvo in memoria l'username dell'utente
             len = strlen(temp_username);
