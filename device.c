@@ -433,7 +433,6 @@ void receiveFile(int* p2p_sd, char* file_name, struct User* user, fd_set* master
     strncat(file_path, "/", 2);
     strncat(file_path, file_name, strlen(file_name));
     file_path[len - 1] = '\0';
-    printf("FILE_PATH: %s\n", file_path);
 
     // apro il file in scrittura binaria
     fp = fopen(file_path, "wb"); 
@@ -464,8 +463,9 @@ void receiveFile(int* p2p_sd, char* file_name, struct User* user, fd_set* master
  * @param users_chatting_with puntatore alla lista di utenti con cui si sta chattando.
  * @param p2p_sd puntatore all'intero che rappresenta il socket descriptor relativo all'utente che ha inviato il file.
  * @param file_name puntatore al buffer che contiene il nome del file da inviare.
+ * @param my_username l'username dell'utente.
  */
-void sendFileToOthers(struct usersChattingWith** users_chatting_with, int p2p_sd, char* file_name) {
+void sendFileToOthers(struct usersChattingWith** users_chatting_with, int p2p_sd, char* file_name, char* my_username) {
     
     int ret;
     int len;
@@ -475,14 +475,16 @@ void sendFileToOthers(struct usersChattingWith** users_chatting_with, int p2p_sd
     struct usersChattingWith* elem = NULL;
 
     // creo il path di dove è salvato il file
-    len = strlen(file_name) + 16;
+    len = strlen(file_name) + strlen(my_username) + 18;
     file_path = malloc(len);
     strncpy(file_path, "./client/media/", 16);
+    strncat(file_path, my_username, strlen(my_username));
+    strncat(file_path, "/", 2);
     strncat(file_path, file_name, len);
     file_path[len - 1] = '\0';
 
     fp = fopen(file_path, "rb"); // apro il file in lettura in binario
-    if(fp == NULL) { printf("Errore nell'apertura del file.\n"); return; }
+    if(fp == NULL) { printf("Errore nell'apertura del file.\n"); free(file_path); return; }
 
     if(users_chatting_with == NULL) {
         printf("\nLa lista è vuota.\n");
@@ -787,7 +789,7 @@ void ioMultiplexing(struct User* user, struct onlineUser** online_user_list, int
                         receiveFile(&i, file_name, user, &master);
                         
                         // invio il file agli altri componenti del gruppo
-                        sendFileToOthers(&user->users_chatting_with, i, file_name);
+                        sendFileToOthers(&user->users_chatting_with, i, file_name, user->my_username);
 
                         // pulisco il buffer
                         memset(buffer, '\0', BUFFER_SIZE);
