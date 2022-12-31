@@ -378,15 +378,22 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* src_usern
         ret = connect_to(&new_sd, &dst_addr, atoi(dst_port));
         if(ret < 0) { printf("Impossibile connettersi al device\n"); }
         else {
-            // invio il messaggio al mittente
-            len = strlen(my_username) + 40;
+            // invio la notifica al mittente
+            ret = send_TCP(&new_sd, "notifica");
+            if(ret < 0) { printf("Impossibile inviare il messaggio\n"); }
+
+            // creo il messaggio
+            len = strlen(my_username);
             message = malloc(len);
-            sprintf(message, "I messaggi inviati a %s sono stati letti!", my_username);
+            sprintf(message, "%s", my_username);
+
+            // invio il messaggio al mittente
             ret = send_TCP(&new_sd, message);
             if(ret < 0) { printf("Impossibile inviare il messaggio\n"); }
             
             // libero la memoria allocata per il messaggio
             free(message);
+            
             // mi disconnetto dal mittente
             disconnect_to(&new_sd);
         }
@@ -396,7 +403,8 @@ void show(int* sd, struct pendingMessage** pending_message_list, char* src_usern
         if(fp == NULL) { printf("Error0 impossibile aprire il file notifications.txt\n"); return; }
 
         // salvo il testo della notifica su file
-        ret = fprintf(fp, "%s:I messaggi inviati a %s sono stati letti!\n", src_username, my_username);
+        // ret = fprintf(fp, "%s:I messaggi inviati a %s sono stati letti!\n", src_username, my_username);
+        ret = fprintf(fp, "%s:%s\n", src_username, my_username);
         if(ret < 0) { printf("Error1 impossibile salvare la notifica\n"); return; }
 
         // chiudo il file

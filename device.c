@@ -30,6 +30,42 @@ void clearMaster(int* server_sd, int* listener, fd_set* master) {
     return;
 }
 
+void showMessageHistory(struct User* user) {
+
+    FILE* fp;
+    int len;
+    char* file_path;
+    char* message;
+    char file_line[64];
+    
+    // creo il path di dove andrà salvato il messaggio
+    len = strlen(user->dst_username) + strlen(user->my_username) + 34;
+    file_path = malloc(len);
+    strncpy(file_path, "./client/messages/", 19);
+    strncat(file_path, user->my_username, strlen(user->my_username));
+    strncat(file_path, "/", 2);
+    strncat(file_path, user->dst_username, strlen(user->dst_username));
+    strncat(file_path, "_messages.txt", 14);
+    file_path[len - 1] = '\0';
+
+    // apro il file my_username/dst_user_messages.txt in lettura
+    fp = fopen(file_path, "r");
+    if(fp == NULL) { printf("Error0 showMessageHistory\n"); free(file_path); return; }
+
+    // verifico che il destinatario sia presente in rubrica
+    while (fgets(file_line, sizeof(file_line), fp) != NULL) {
+
+        message = strtok(file_line, "\n");
+
+        printf("%s\n", message);
+    }
+
+    // chiudo il file
+    fclose(fp);
+
+    return;
+}
+
 /**
  * Funzione chiamata quando l'utente inizia una chat offline,
  * ovvero il caso in cui i messaggi vengono salvati sul server.
@@ -39,8 +75,11 @@ void clearMaster(int* server_sd, int* listener, fd_set* master) {
  */
 void chattingOffline(struct User* user, char* buffer) {
     
+    // mostro a video la cronologia dei messaggi
+    showMessageHistory(user);
+
     // cambio lo stato dell'utente
-    user->user_state = CHATTING_OFFLINE;      
+    user->user_state = CHATTING_OFFLINE;    
     
     // pulisco il buffer
     memset(buffer, '\0', BUFFER_SIZE);
@@ -70,6 +109,12 @@ void chattingOnline(int dst_port, struct User* user, fd_set* master, int* p2p_sd
     addNewConnToChattingWithList(&user->users_chatting_with, user->dst_username, dst_port, p2p_sd);
     FD_SET(*p2p_sd, master);
     if(*p2p_sd > *fdmax) { *fdmax = *p2p_sd; } 
+
+    // invio al nuovo utente il mio username
+    send_TCP(p2p_sd, user->my_username);
+
+    // mostro a video la cronologia dei messaggi
+    showMessageHistory(user);
 
     // cambio lo stato dell'utente
     user->user_state = CHATTING_ONLINE;
@@ -257,10 +302,82 @@ void deviceDisconnection(struct User* user, int* p2p_sd, fd_set* master) {
     
     // elimino la connessione con questo device
     delConnFromChattingWithList(&user->users_chatting_with, p2p_sd, master);
-    printf("Il device ha chiuso la comunicazione.\n"); 
+    printf("Comunicazione terminata con successo.\n"); 
 
     // elimino questo utente dalla lista di quelli con cui si sta chattando
     delUserFromChattingWithList(&user->users_chatting_with, *p2p_sd);
+    return;
+}
+
+void saveMessage(struct User* user,  struct usersChattingWith** users_chatting_with, char* message) {
+
+    FILE* fp;
+    char* file_path;
+    int len;
+    int ret;
+    struct usersChattingWith* elem = *users_chatting_with;
+    
+    // scorro la lista degli utenti con cui si sta chattando e
+    // per ogni utente salvo il messaggio nel giusto file
+    if(user->user_state == CHATTING_ONLINE) {
+        
+        while(elem != NULL) {
+
+            // creo il path di dove andrà salvato il messaggio
+            len = strlen(elem->dst_username) + strlen(user->my_username) + 34;
+            file_path = malloc(len);
+            strncpy(file_path, "./client/messages/", 19);
+            strncat(file_path, user->my_username, strlen(user->my_username));
+            strncat(file_path, "/", 2);
+            strncat(file_path, elem->dst_username, strlen(elem->dst_username));
+            strncat(file_path, "_messages.txt", 14);
+            file_path[len - 1] = '\0';
+
+            // apro il file my_username/dst_username_messages.txt in append
+            fp = fopen(file_path, "a");
+            if(fp == NULL) { printf("Error0 saveMessage\n"); free(file_path); continue; }
+
+            // salvo due asterischi seguiti dal messaggio
+            ret = fprintf(fp, "**%s\n", message);
+            if(ret < 0) { printf("Error1 saveMessage\n"); }
+
+            // chiudo il file
+            fclose(fp);
+
+            // libero la memoria allocata per il path
+            free(file_path);
+
+            // passo all'utente successivo
+            elem = elem->next;
+            
+        }
+    } else {
+
+        // creo il path di dove andrà salvato il messaggio
+        len = strlen(user->dst_username) + strlen(user->my_username) + 34;
+        file_path = malloc(len);
+        strncpy(file_path, "./client/messages/", 19);
+        strncat(file_path, user->my_username, strlen(user->my_username));
+        strncat(file_path, "/", 2);
+        strncat(file_path, user->dst_username, strlen(user->dst_username));
+        strncat(file_path, "_messages.txt", 14);
+        file_path[len - 1] = '\0';
+
+        // apro il file my_username/dst_username_messages.txt in append
+        fp = fopen(file_path, "a");
+        if(fp == NULL) { printf("Error2 saveMessage\n"); free(file_path); return; }
+
+        // salvo un asterisco seguito dal messaggio
+        ret = fprintf(fp, " *%s\n", message);
+        if(ret < 0) { printf("Error3 saveMessage\n"); }
+
+        // chiudo il file
+        fclose(fp);
+
+        // libero la memoria allocata per il path
+        free(file_path);
+    }
+
     return;
 }
 
@@ -290,8 +407,6 @@ int sendMessage(struct User* user, char* buffer, int* server_sd) {
         // invio il messaggio a tutti i membri del gruppo
         ret = sendMessageToAll(&user->users_chatting_with, message);
         if(ret < 0) { free(message); return 1; }
-        printf("*");
-        fflush(stdout);
     } else {
         
         // aggiungo le informazioni al messaggio da inviare al server
@@ -303,9 +418,12 @@ int sendMessage(struct User* user, char* buffer, int* server_sd) {
         ret = send_TCP(server_sd, message);
         if(ret < 0) { free(message); return 1; }
     }
+
+    // salvo il messaggio su file
+    saveMessage(user, &user->users_chatting_with, buffer);
     
     // stampa di estetica
-    printf("* %s\n> ", buffer);
+    printf("> ");
     fflush(stdout);
     
     // pulisco il buffer
@@ -703,20 +821,51 @@ void ioMultiplexing(struct User* user, struct onlineUser** online_user_list, int
                     p2p_sd = accept(*listener, (struct sockaddr*)&src_addr, (socklen_t*)&addrlen);
                     if(p2p_sd < 0) { perror("Error0 accept"); }
                     else {
-                        printf("Stabilita una connessione con un device!\n");
                         FD_SET(p2p_sd, &master);
                         if(p2p_sd > fdmax) { fdmax = p2p_sd; } 
                     }
 
+                    // pulisco il buffer
+                    memset(buffer, '\0', BUFFER_SIZE);
+
+                    // ricevo l'username dell'utente che si è connesso
+                    receive_TCP(&p2p_sd, buffer);
+
+                    // controllo se invece dell'username ho ricevuto una notifica
+                    if(!strncmp(buffer, "notifica", 9)) {
+                        
+                        printf("Ricevuta una nuova notifica!\n");
+
+                        // pulisco il buffer
+                        memset(buffer, '\0', BUFFER_SIZE);
+                        
+                        // ricevo l'username di chi ha letto i messaggi
+                        receive_TCP(&p2p_sd, buffer);
+                        
+                        // stampo il testo della notifica
+                        printf("I messaggi inviati a %s sono stati letti!\n", buffer);
+
+                        // aggiorno i messaggi salvati su file
+                        updateSavedMessages(user, buffer);
+
+                        // pulisco il buffer
+                        memset(buffer, '\0', BUFFER_SIZE);
+
+                    } else {
+                        printf("Stabilita una connessione con un device!\n");
+                        // stampa di estetica
+                        printf("> ");
+                        fflush(stdout);
+                    }
                     // aggiungo questo utente alla lista di quelli con cui si sta chattando
-                    addElemToChattingWithList(&user->users_chatting_with, "undefined", 0, p2p_sd);
+                    addElemToChattingWithList(&user->users_chatting_with, buffer, 0, p2p_sd);
 
                     // cambio lo stato dell'utente
                     user->user_state = CHATTING_ONLINE;
-                    
-                    // stampa di estetica
-                    printf("> ");
-                    fflush(stdout);
+
+                    // pulisco il buffer
+                    memset(buffer, '\0', BUFFER_SIZE);
+
                 } else if(i == STANDARD_INPUT) { // se è lo standard input
                     
                     // prelievo il comando dallo standard input e lo salvo nel buffer
@@ -870,7 +1019,7 @@ int main(int argc, char *argv[]) {
     }
 
     // ricevo le notifiche mentre ero offline
-    receiveNotifications(&server_sd, (char*)&buffer);
+    receiveNotifications(&user, &server_sd, (char*)&buffer);
 
     // pulisco il buffer
     memset(&buffer, '\0', BUFFER_SIZE);
