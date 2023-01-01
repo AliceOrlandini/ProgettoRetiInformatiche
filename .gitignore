@@ -1,7 +1,6 @@
 dev
 serv
 *.o
-TODO
 .vscode
 server/.DS_Store
 client/.DS_Store
