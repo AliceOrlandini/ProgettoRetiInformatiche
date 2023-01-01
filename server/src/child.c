@@ -6,6 +6,7 @@
 #include <fcntl.h>
 
 #include "./../include/child.h"
+
 /**
  * Permette di aggiungere un figlio alla lista dei processi figli.
  * Viene invocata subito dopo la fork nel processo padre.
@@ -29,6 +30,7 @@ void addChild(struct child** child_list, int pid) {
 
     return;
 }
+
 /**
  * Elimina tutta la lista dei processi figli.
  * 

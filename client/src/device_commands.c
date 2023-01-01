@@ -273,16 +273,16 @@ bool checkContacts(char* my_username, char* dst_username) {
     char* file_username;
 
     // creo il path del file rubrica
-    len = strlen(my_username) + 23;
+    len = strlen(my_username) + 24;
     file_path = malloc(len);
-    strncpy(file_path, "./client/contacts/", 18);
-    strncat(file_path, my_username, len);
+    strncpy(file_path, "./client/contacts/", 19);
+    strncat(file_path, my_username, strlen(my_username));
     strcat(file_path, ".txt");
     file_path[len - 1] = '\0';
 
     // apro la rubrica
     fp = fopen(file_path, "r");
-    if(fp == NULL) { printf("Error0 chat\n"); return -1; }
+    if(fp == NULL) { printf("Error0 checkContacts\n"); return false; }
 
     // verifico che il destinatario sia presente in rubrica
     while (fgets(file_line, sizeof(file_line), fp) != NULL) {
@@ -382,14 +382,79 @@ void out(int* server_sd, struct User* user) {
 }
 
 /**
+ * Permette aggiornare il file dei messaggi salvati ponendo come 
+ * letti i messaggi pendenti destinati ad dst_username.
+ * 
+ * @param user puntatore alla struttura dati contenente le informazioni dell'utente.
+ * @param dst_username puntatore al buffer contenente l'username dell'utente con cui si sta chattando.
+ */
+void updateSavedMessages(struct User* user, char* dst_username) {
+
+    FILE* fp;
+    char* file_path;
+    char* clean_line;
+    char file_line[64];
+    int len;
+    int ret;
+    int last_len;
+    int position = 0;
+
+    // creo il path di dove andrà salvato il messaggio
+    len = strlen(dst_username) + strlen(user->my_username) + 34;
+    file_path = malloc(len);
+    strncpy(file_path, "./client/messages/", 19);
+    strncat(file_path, user->my_username, strlen(user->my_username));
+    strncat(file_path, "/", 2);
+    strncat(file_path, dst_username, strlen(dst_username));
+    strncat(file_path, "_messages.txt", 14);
+    file_path[len - 1] = '\0';
+
+    // apro il file in lettura e scrittura
+    fp = fopen(file_path, "r+");
+    if(fp == NULL) { printf("Error0 updateSavedMessages\n"); free(file_path); return; }
+
+    // tutti i messaggi con un solo asterisco vanno sostituiti con due asterischi
+    while (fgets(file_line, sizeof(file_line), fp) != NULL) {
+
+        // aggiorno queste variabili che serviranno per
+        // andare a sovrascrivere lo spazio con l'astrisco
+        last_len = strlen(file_line);
+        position += last_len;
+        
+        if(!strncmp(&file_line[0], " ", 1)) {
+            // prendo il messaggio senza lo spazio
+            clean_line = strtok(file_line, " ");
+            position -= last_len;
+            fseek(fp, position, SEEK_SET);
+
+            // sostituisco il messaggio
+            fprintf(fp, "*%s", clean_line);
+
+            // riporto la posizione del file allo stato precedente 
+            // perchè devo continuare a scorrere il file
+            position += last_len;
+            fseek(fp, position, SEEK_SET);
+        } 
+    }
+
+    // libero la memoria allocata per il path
+    free(file_path);
+    
+    // chiudo il file
+    fclose(fp);
+    return;
+}
+
+/**
  * Permette di ricevere le notifiche mentre si era offline.
  * Questa funzione viene eseguita quando il device inizia 
  * la sua esecuzione.
  * 
+ * @param user puntatore alla struttura dati contenente le informazioni dell'utente.
  * @param server_sd puntatore al socket descriptor del server.
  * @param buffer puntatore al buffer.
  */
-void receiveNotifications(int* server_sd, char* buffer) {
+void receiveNotifications(struct User* user, int* server_sd, char* buffer) {
     
     int ret;
     int num_notifications;
@@ -408,8 +473,8 @@ void receiveNotifications(int* server_sd, char* buffer) {
 
     // se si hanno zero notifiche ritorno
     if(num_notifications == 0) { return; }
-    else if(num_notifications == 1) { printf("Hai ricevuto %d notifica:\n", num_notifications); }
-    else { printf("Hai ricevuto %d notifiche:\n", num_notifications); }
+    else if(num_notifications == 1) { printf("Hai ricevuto una notifica mentre eri offline:\n"); }
+    else { printf("Hai ricevuto %d notifiche mentre eri offline:\n", num_notifications); }
 
     // ricevo le notifiche
     for(i = 0; i < num_notifications; i++) {
@@ -425,7 +490,10 @@ void receiveNotifications(int* server_sd, char* buffer) {
         }
         if(ret < 0) { printf("Impossibile ricevere la notifica\n"); continue; }
 
-        printf("%s\n", buffer);
+        printf("I messaggi inviati a %s sono stati letti!\n", buffer);
+
+        // aggiorno i messaggi salvati su file
+        updateSavedMessages(user, buffer);
     }
 }
 
