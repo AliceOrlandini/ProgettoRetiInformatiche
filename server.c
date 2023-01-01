@@ -155,6 +155,15 @@ void ioMultiplexing(int listener) {
     }
 }
 
+/**
+ * Nel main si va a inizializzare il socket di ascolto e
+ * si stampano i comandi disponibili sul server.
+ * In seguito, si fa partire l'io multiplexing.
+ * 
+ * @param argc numero di argomenti presi in input.
+ * @param argv array di argomenti presi in input.
+ * @return un intero negativo in caso di errore, positivo altrimenti. 
+ */
 int main(int argc, char *argv[]) {
 
     int listener;

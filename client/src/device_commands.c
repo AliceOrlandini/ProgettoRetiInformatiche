@@ -273,16 +273,16 @@ bool checkContacts(char* my_username, char* dst_username) {
     char* file_username;
 
     // creo il path del file rubrica
-    len = strlen(my_username) + 23;
+    len = strlen(my_username) + 24;
     file_path = malloc(len);
-    strncpy(file_path, "./client/contacts/", 18);
-    strncat(file_path, my_username, len);
+    strncpy(file_path, "./client/contacts/", 19);
+    strncat(file_path, my_username, strlen(my_username));
     strcat(file_path, ".txt");
     file_path[len - 1] = '\0';
 
     // apro la rubrica
     fp = fopen(file_path, "r");
-    if(fp == NULL) { printf("Error0 chat\n"); return -1; }
+    if(fp == NULL) { printf("Error0 checkContacts\n"); return false; }
 
     // verifico che il destinatario sia presente in rubrica
     while (fgets(file_line, sizeof(file_line), fp) != NULL) {
@@ -381,6 +381,13 @@ void out(int* server_sd, struct User* user) {
 
 }
 
+/**
+ * Permette aggiornare il file dei messaggi salvati ponendo come 
+ * letti i messaggi pendenti destinati ad dst_username.
+ * 
+ * @param user puntatore alla struttura dati contenente le informazioni dell'utente.
+ * @param dst_username puntatore al buffer contenente l'username dell'utente con cui si sta chattando.
+ */
 void updateSavedMessages(struct User* user, char* dst_username) {
 
     FILE* fp;
@@ -422,6 +429,11 @@ void updateSavedMessages(struct User* user, char* dst_username) {
 
             // sostituisco il messaggio
             fprintf(fp, "*%s", clean_line);
+
+            // riporto la posizione del file allo stato precedente 
+            // perchè devo continuare a scorrere il file
+            position += last_len;
+            fseek(fp, position, SEEK_SET);
         } 
     }
 

@@ -4,5 +4,6 @@ serv
 TODO
 .vscode
 server/.DS_Store
+client/.DS_Store
 .gitignore
 .DS_Store

@@ -9,7 +9,6 @@
 #include "./../include/server_consts.h"
 #include "./../../network/include/network.h"
 
-
 /**
  * Stampa i comandi che il server ha a disposizione
  * con una breve descrizione del funzionamento.

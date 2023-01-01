@@ -77,13 +77,6 @@ void delPMList(struct pendingMessage** pending_message_list) {
     return; 
 }
 
-/*
-    Funzione che stampa username, timestamp e messaggio
-    di ogni elemento presente nella lista dei messaggi 
-    pendenti. Questa funzione viene utilizzata solo in 
-    fase di debugging del codice.
-*/
-
 /**
  * Funzione che stampa username, timestamp e messaggio
  * di ogni elemento presente nella lista dei messaggi 
@@ -156,11 +149,6 @@ void createPMList(struct pendingMessage** pending_message_list, char* dev_userna
     // stampa di debugging
     // printPMList(pending_message_list);
 }
-
-/*
-    Permette di eliminare tutti i messaggi che hanno come 
-    mittente l'utente specificato come parametro.
-*/
 
 /**
  * Permette di eliminare tutti i messaggi che hanno come 

@@ -30,6 +30,12 @@ void clearMaster(int* server_sd, int* listener, fd_set* master) {
     return;
 }
 
+/**
+ * Invocata dopo che si inizia una chat, permette di 
+ * stampare a video lo storico dei messaggi presente su file.
+ * 
+ * @param user puntatore alla struttura dati usata per contenere le informazioni dell'utente.
+ */
 void showMessageHistory(struct User* user) {
 
     FILE* fp;
@@ -239,6 +245,9 @@ void newGroupMember(struct User* user, struct onlineUser** online_user_list, cha
     FD_SET(sd, master);
     if(sd > *fdmax) { *fdmax = sd; } 
 
+    // invio al destinatario il mio username per presentarmi
+    send_TCP(&sd, user->my_username);
+
     // stampa di informazione
     printf("Utente inserito nel gruppo con successo!\n> ");
     fflush(stdout);
@@ -309,6 +318,13 @@ void deviceDisconnection(struct User* user, int* p2p_sd, fd_set* master) {
     return;
 }
 
+/**
+ * @brief 
+ * 
+ * @param user puntatore alla struttura dati usata per contenere le informazioni dell'utente.
+ * @param users_chatting_with puntatore alla lista di utenti con cui si sta chattando.
+ * @param message 
+ */
 void saveMessage(struct User* user,  struct usersChattingWith** users_chatting_with, char* message) {
 
     FILE* fp;
@@ -961,6 +977,19 @@ void ioMultiplexing(struct User* user, struct onlineUser** online_user_list, int
     }
 }
 
+/**
+ * Nella funzione main indiamo a inizializzare i dati dell'utente e
+ * aspettiamo che si registri o effettui il login.
+ * In seguito, si ricevono le notifiche ricevute mentre si era offline
+ * e facciamo partire l'io multiplexing. 
+ * Quando l'io multiplexing termina deallochiamo la memoria usata per
+ * contenere le informazioni dell'utente, si disconnette il socket di ascolto
+ *  e si termina il programma.
+ * 
+ * @param argc il numero di argomenti presi in input.
+ * @param argv array degli argomenti presi in input.
+ * @return un numero intero positivo in caso di successo, negativo in caso di errore. 
+ */
 int main(int argc, char *argv[]) {
 
     int server_sd;
