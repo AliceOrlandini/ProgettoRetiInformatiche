@@ -47,7 +47,7 @@ int signup(char* command, struct User* user, int* server_sd, struct sockaddr_in*
     snprintf(message, len, "%s %s %s %s", command, user->my_username, user->my_password, user->my_port);
 
     // stabilisco la connessione con il server
-    ret = connect_to(server_sd, server_addr, SERVER_PORT);
+    ret = connect_to(server_sd, server_addr, atoi(user->srv_port));
     if(ret < 0) { printf("Impossibile connettersi al server.\n"); free(message); return -1; }
     
     // invio al server il messaggio
