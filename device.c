@@ -887,6 +887,8 @@ void ioMultiplexing(struct User* user, struct onlineUser** online_user_list, int
                     // prelievo il comando dallo standard input e lo salvo nel buffer
                     read(STANDARD_INPUT, (void*)buffer, BUFFER_SIZE);
                     len = strlen(buffer);
+                    // controllo che non abbia semplicemente premuto invio (messaggio vuoto)
+                    if(len == 1) { continue; }
                     buffer[len - 1] = '\0';
 
                     // eseguo la funzione che gestirà l'input
@@ -1034,6 +1036,8 @@ int main(int argc, char *argv[]) {
         // prelievo il comando dallo standard input e lo salvo nel buffer
         read(STANDARD_INPUT, (void*)&buffer, BUFFER_SIZE);
         len = strlen(buffer);
+        // controllo che non abbia semplicemente premuto invio (messaggio vuoto)
+        if(len == 1) { continue; }
         buffer[len-1] = '\0'; // per togliere il \n
         
         // eseguo l'azione prevista dal comando
