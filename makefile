@@ -43,3 +43,6 @@ child.o: child.c
 clean:
 	rm *o dev serv 
 	rm ./server/src/*.o ./client/src/*.o ./network/src/*.o
+	> ./server/files/db_users.txt
+	> ./server/files/db_notifications.txt
+	> ./server/files/db_messages.txt

@@ -91,6 +91,44 @@ void in(int* sd, char* dev_username, char* dev_password) {
 }
 
 /**
+ * Permette di controllare se l'utente con username specificato come
+ * parametro è già registrato o meno.
+ * 
+ * @param dst_username l'username da controllare.
+ * @return true se l'username è già registrato, falso altrimenti.
+ */
+bool isDuplicated(char* dst_username) {
+    
+    FILE* fp;
+    char file_line[64];
+    int username_len;
+    char* username;
+    
+    // apro il file db_users.txt in lettura
+    fp = fopen("./server/files/db_users.txt", "r"); 
+    if(fp == NULL) { printf("Error0 isDuplicated\n"); return false; }
+
+    // se l'utente è già registrato allora avrà già questo username nel file
+    while (fgets(file_line, sizeof(file_line), fp) != NULL) {
+        
+        // ricavo l'username
+        username = strtok(file_line, " ");
+
+        // controllo se l'username passato come parametro coincide con quello estratto
+        username_len = (strlen(username) > strlen(dst_username))? strlen(username):strlen(dst_username);
+        if(!strncmp(dst_username, username, username_len)) {
+            // chiudo il file e ritorno che l'username è duplicato
+            fclose(fp);
+            return true;
+        }
+    }
+
+    // chiudo il file e ritorno che l'username può essere utilizzato
+    // per effettuare la registrazione
+    fclose(fp);
+    return false;
+}
+/**
  * Permette a un utente di registrarsi con un username e una password.
  * Per fare ciò si aggiunge una riga nel file db_users.txt contenente
  * le informazioni dell'utente.
@@ -106,6 +144,14 @@ void signup(int* sd, char* dev_username, char* dev_password, char* dev_port) {
     time_t t;
     char timestamp_login[TIMESTAMP_SIZE];
     FILE *fp;
+
+    // controlo se l'username che mi è stato inviato è già registrato
+    if(isDuplicated(dev_username)) {
+        printf("\nQuesto username è già registrato.\n");
+        ret = send_TCP(sd, "no");
+        if(ret < 0) { printf("Error0 username duplicated\n"); return; }
+        return;
+    }
 
     // apro il file db_users.txt in append
     fp = fopen("./server/files/db_users.txt", "a");
@@ -283,7 +329,7 @@ bool checkOnline(char* dst_username, char* port) {
         }
     }
 
-    // chiudo il file e libero la memoria allocata per la porta
+    // chiudo il file 
     fclose(fp);
     return false;
 }
